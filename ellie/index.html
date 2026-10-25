@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Ellie's Thames Path</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single long river drawn to rough geography, source on the left (top on phones), sea on the right (bottom); walked stretches glow over it; a stage list underneath. */
+:root{
+  --paper:#eef1e8;
+  --meadow:#dfe7d3;
+  --ink:#1f2b26;
+  --muted:#5d6b63;
+  --river:#7fb3cf;
+  --river-deep:#3f7fa6;
+  --walked:#e2793a;
+  --line:#c9d3bf;
+  --card:#f7f9f3;
+  --display:"Young Serif", Georgia, "Times New Roman", serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#131a17;--meadow:#1b2420;--ink:#e6ece4;--muted:#9aa89f;--river:#4f87a8;--river-deep:#8cc3e0;--walked:#f0945a;--line:#2c3832;--card:#18201c;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#131a17;--meadow:#1b2420;--ink:#e6ece4;--muted:#9aa89f;--river:#4f87a8;--river-deep:#8cc3e0;--walked:#f0945a;--line:#2c3832;--card:#18201c;color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:28px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:28px}
+header{display:grid;gap:8px}
+.eyebrow{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(34px,6vw,64px);line-height:1.05;text-wrap:balance}
+.lede{margin:0;max-width:58ch;color:var(--muted)}
+
+.progress{display:grid;gap:10px;max-width:640px}
+.tally{margin:0;font-family:var(--display);font-size:clamp(22px,3vw,30px);line-height:1.2}
+.tally b{font-weight:400;color:var(--walked)}
+.tally span{font-family:var(--body);font-size:15px;color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--walked);border-radius:999px;transition:width 1.2s ease}
+
+.map{background:var(--meadow);border-radius:18px;padding:12px;overflow:hidden}
+.map svg{display:block;width:100%;height:auto;max-width:100%}
+.map text{font-family:var(--body);fill:var(--ink)}
+.map .mile{font-family:var(--mono);fill:var(--muted)}
+.map .end{font-family:var(--display)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;margin:0;padding:4px 6px 0;font-size:13px;color:var(--muted);list-style:none}
+.legend li{display:flex;align-items:center;gap:8px}
+.legend .sw{width:22px;height:6px;border-radius:3px;background:var(--river)}
+.legend .sw.w{background:var(--walked)}
+
+h2{margin:0;font-family:var(--display);font-weight:400;font-size:24px}
+.stages{display:grid;gap:12px}
+.stage-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.stage{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;min-width:0}
+.stage .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--river)}
+.stage.done .dot{background:var(--walked);border-color:var(--walked)}
+.stage .name{min-width:0}
+.stage .mi{font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stage.done .name{font-weight:600}
+.note{margin:0;font-size:13px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow"><a href="/" style="color:inherit">← Wimbledon Massive</a> · Thames Path National Trail</p>
+    <h1>Ellie's Thames Path</h1>
+    <p class="lede">From a field near Kemble, where the river starts as a spring, all the way to Woolwich in east London. Walked one stretch at a time.</p>
+  </header>
+
+  <section class="progress" aria-label="Progress">
+    <p class="tally" id="tally"></p>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="185" id="bar"><i></i></div>
+  </section>
+
+  <figure class="map" style="margin:0">
+    <svg id="river" role="img" aria-label="Map of the River Thames from its source near Kemble to Woolwich, with walked stretches highlighted"></svg>
+    <ul class="legend">
+      <li><span class="sw w"></span>Walked</li>
+      <li><span class="sw"></span>Still to walk</li>
+    </ul>
+  </figure>
+
+  <section class="stages">
+    <h2>The stretches</h2>
+    <ul class="stage-list" id="stages"></ul>
+    <p class="note">Distances are approximate miles from the source along the trail, which runs about 185 miles in total.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+// Places along the trail: approximate position and miles from the source
+const PLACES=[
+ {n:'Thames Head',lat:51.694,lon:-2.030,mi:0,key:1},
+ {n:'Cricklade',lat:51.641,lon:-1.856,mi:12},
+ {n:'Lechlade',lat:51.692,lon:-1.692,mi:23,key:1},
+ {n:'Newbridge',lat:51.708,lon:-1.418,mi:39},
+ {n:'Oxford',lat:51.746,lon:-1.256,mi:54,key:1},
+ {n:'Abingdon',lat:51.668,lon:-1.282,mi:63},
+ {n:'Wallingford',lat:51.600,lon:-1.124,mi:77,key:1},
+ {n:'Goring',lat:51.522,lon:-1.139,mi:85},
+ {n:'Reading',lat:51.462,lon:-0.970,mi:96,key:1},
+ {n:'Henley',lat:51.537,lon:-0.900,mi:105,key:1},
+ {n:'Marlow',lat:51.568,lon:-0.776,mi:113},
+ {n:'Maidenhead',lat:51.523,lon:-0.703,mi:120},
+ {n:'Windsor',lat:51.483,lon:-0.607,mi:128,key:1},
+ {n:'Staines',lat:51.432,lon:-0.513,mi:135},
+ {n:'Walton',lat:51.389,lon:-0.414,mi:143},
+ {n:'Kingston',lat:51.410,lon:-0.307,mi:150,key:1},
+ {n:'Richmond',lat:51.459,lon:-0.307,mi:156},
+ {n:'Putney',lat:51.467,lon:-0.215,mi:164},
+ {n:'Westminster',lat:51.501,lon:-0.124,mi:170,key:1},
+ {n:'Tower Bridge',lat:51.506,lon:-0.075,mi:173},
+ {n:'Greenwich',lat:51.483,lon:-0.009,mi:179,key:1},
+ {n:'Woolwich',lat:51.496,lon:0.061,mi:185,key:1}
+];
+const TOTAL=185;
+// where each label sits on the wide map, so neighbours don't collide
+const WIDE_POS={'Thames Head':'n','Cricklade':'s','Lechlade':'n','Newbridge':'s','Oxford':'n','Abingdon':'e','Wallingford':'e','Goring':'w',
+ 'Reading':'s','Henley':'nw','Marlow':'n','Maidenhead':'sw','Windsor':'ne','Staines':'sw','Walton':'s','Kingston':'s','Richmond':'nw',
+ 'Putney':'s','Westminster':'nw','Tower Bridge':'none','Greenwich':'n','Woolwich':'e'};
+
+// Ellie's walked stretches: add one line per walk, using the place names above
+const WALKED=[
+ // ['Maidenhead','Windsor'],
+];
+const SAMPLE=[['Henley','Marlow'],['Maidenhead','Windsor'],['Richmond','Putney']];
+const walks=(location.hash==='#preview')?SAMPLE:WALKED;
+
+const idx=n=>PLACES.findIndex(p=>p.n===n);
+const ranges=walks.map(([a,b])=>{const A=PLACES[idx(a)].mi,B=PLACES[idx(b)].mi;return [Math.min(A,B),Math.max(A,B)]});
+const isWalked=m=>ranges.some(([a,b])=>m>=a-1e-6&&m<=b+1e-6);
+// merge ranges for the total
+const merged=[...ranges].sort((x,y)=>x[0]-y[0]).reduce((acc,r)=>{const l=acc[acc.length-1];if(l&&r[0]<=l[1])l[1]=Math.max(l[1],r[1]);else acc.push([...r]);return acc},[]);
+const walkedMi=merged.reduce((s,[a,b])=>s+(b-a),0);
+
+// progress
+document.getElementById('tally').innerHTML=`<b>${walkedMi}</b> of ${TOTAL} miles walked <span>· ${Math.round(walkedMi/TOTAL*100)}%</span>`;
+const bar=document.getElementById('bar');bar.setAttribute('aria-valuenow',walkedMi);
+requestAnimationFrame(()=>{bar.firstElementChild.style.width=(walkedMi/TOTAL*100)+'%'});
+
+// stage list
+const ul=document.getElementById('stages');
+for(let i=0;i<PLACES.length-1;i++){
+  const a=PLACES[i],b=PLACES[i+1],mid=(a.mi+b.mi)/2,done=isWalked(a.mi)&&isWalked(b.mi)&&isWalked(mid);
+  const li=document.createElement('li');li.className='stage'+(done?' done':'');
+  li.innerHTML=`<span class="dot" aria-hidden="true"></span><span class="name">${a.n} to ${b.n}</span><span class="mi">${b.mi-a.mi} mi</span>`;
+  li.setAttribute('aria-label',`${a.n} to ${b.n}, ${b.mi-a.mi} miles, ${done?'walked':'not walked yet'}`);
+  ul.appendChild(li);
+}
+
+// ---------- map ----------
+const svg=document.getElementById('river');
+const NS='http://www.w3.org/2000/svg';
+const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function catmull(pts,steps){
+  const out=[];
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||pts[i+1];
+    for(let s=0;s<steps;s++){
+      const t=s/steps,t2=t*t,t3=t2*t;
+      const f=(a,b,c,d)=>0.5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);
+      out.push({x:f(p0.x,p1.x,p2.x,p3.x),y:f(p0.y,p1.y,p2.y,p3.y),mi:p1.mi+(p2.mi-p1.mi)*t,seg:i});
+    }
+  }
+  const l=pts[pts.length-1];out.push({x:l.x,y:l.y,mi:l.mi,seg:pts.length-2});
+  return out;
+}
+
+function draw(){
+  svg.innerHTML='';
+  const wide=svg.parentElement.clientWidth>=640;
+  const k=Math.cos(51.55*Math.PI/180);
+  const lons=PLACES.map(p=>p.lon*k),lats=PLACES.map(p=>p.lat);
+  const minX=Math.min(...lons),maxX=Math.max(...lons),minY=Math.min(...lats),maxY=Math.max(...lats);
+  let W,H,pad,project;
+  if(wide){
+    W=1200;pad={l:70,r:120,t:90,b:90};
+    const sx=(W-pad.l-pad.r)/(maxX-minX);
+    H=Math.round((maxY-minY)*sx+pad.t+pad.b);
+    project=p=>({x:pad.l+(p.lon*k-minX)*sx,y:pad.t+(maxY-p.lat)*sx});
+  }else{
+    // phone: rotate so the source sits at the top and the river flows down the screen
+    W=400;pad={l:110,r:110,t:60,b:60};
+    const sx=(W-pad.l-pad.r)/(maxY-minY);
+    H=Math.round((maxX-minX)*sx+pad.t+pad.b);
+    project=p=>({x:pad.l+(maxY-p.lat)*sx,y:pad.t+(p.lon*k-minX)*sx});
+  }
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const pts=PLACES.map(p=>({...project(p),mi:p.mi}));
+  const curve=catmull(pts,24);
+
+  // river: drawn as many short pieces that widen towards the sea
+  const g=el('g',{'stroke-linecap':'round','fill':'none'});
+  const riverCol=css('--river'),walkCol=css('--walked'),deep=css('--river-deep');
+  const width=m=>(wide?2:1.6)+Math.pow(m/TOTAL,1.6)*(wide?16:12);
+  for(let i=0;i<curve.length-1;i++){
+    const a=curve[i],b=curve[i+1];
+    el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:riverCol,'stroke-width':width(a.mi)},g);
+  }
+  // walked stretches on top
+  const gw=el('g',{'stroke-linecap':'round','fill':'none'});
+  for(let i=0;i<curve.length-1;i++){
+    const a=curve[i],b=curve[i+1],m=(a.mi+b.mi)/2;
+    if(isWalked(a.mi)&&isWalked(b.mi)&&isWalked(m))
+      el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:walkCol,'stroke-width':width(a.mi)*0.8+3},gw);
+  }
+
+  // places
+  pts.forEach((p,i)=>{
+    const P=PLACES[i],w=isWalked(P.mi);
+    const r=P.key?5:3.5;
+    el('circle',{cx:p.x,cy:p.y,r:r+2,fill:css('--meadow')});
+    el('circle',{cx:p.x,cy:p.y,r,fill:w?walkCol:css('--card'),stroke:w?walkCol:deep,'stroke-width':2});
+    const showLabel=P.key||wide;
+    if(!showLabel)return;
+    let lx,ly,anchor;
+    if(wide){
+      const pos=WIDE_POS[P.n]||'n';if(pos==='none')return;
+      const o={n:[0,-26,'middle'],s:[0,24,'middle'],e:[12,-2,'start'],w:[-12,-2,'end'],ne:[8,-22,'start'],nw:[-8,-22,'end'],se:[8,22,'start'],sw:[-8,22,'end']}[pos];
+      lx=p.x+o[0];ly=p.y+o[1];anchor=o[2];
+    }else{
+      const left=i%2===0;anchor=left?'end':'start';lx=left?p.x-14:p.x+14;ly=p.y+4;
+    }
+    const isEnd=i===0||i===PLACES.length-1;
+    const t=el('text',{x:lx,y:ly,'text-anchor':anchor,'font-size':isEnd?(wide?20:16):(P.key?(wide?15:13):12.5),'font-weight':P.key?600:400,class:isEnd?'end':''});
+    t.textContent=P.n;
+    const m=el('text',{x:lx,y:ly+(wide?15:13),'text-anchor':anchor,'font-size':wide?11:10,class:'mile'});
+    m.textContent=P.mi+' mi';
+  });
+
+  // source spring and sea markers
+  const s=pts[0],e=pts[pts.length-1];
+  el('text',{x:wide?s.x:s.x,y:wide?s.y+46:s.y-26,'text-anchor':'middle','font-size':11,class:'mile'}).textContent='THE SOURCE';
+  el('text',{x:wide?e.x+12:e.x,y:wide?e.y+46:e.y+36,'text-anchor':wide?'start':'middle','font-size':11,class:'mile'}).textContent='TO THE SEA →';
+}
+draw();
+let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(draw,120)}).observe(svg.parentElement);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+</body>
+</html>
