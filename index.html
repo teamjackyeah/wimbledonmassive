@@ -57,7 +57,7 @@ canvas.over{cursor:pointer}
     <h1 class="title"><span>Wimbledon</span> <span>Massive</span></h1>
     <p class="sub">Wimbledon Common, SW19</p>
   </div>
-  <p class="caption">Tap someone to visit their page</p>
+  <p class="caption">Tap someone to visit their page, or tap the windmill for the theme tune</p>
   <div class="invite">
     <p class="invite-big">We need <b>YOU</b> on Wimbledon Common.</p>
     <p class="invite-small">WhatsApp Jack a photo you like of yourself and you'll appear here!</p>
@@ -425,10 +425,15 @@ function hitTest(e){
   const lx=(e.clientX-rect.left)/scale,ly=(e.clientY-rect.top)/scale;
   return [...people].sort((a,b)=>b.y-a.y).find(p=>lx>p.x-8&&lx<p.x+8&&ly>p.y-19&&ly<p.y+4);
 }
-cv.addEventListener('pointermove',e=>{cv.classList.toggle('over',!!hitTest(e))});
+function onMill(e){
+  const rect=cv.getBoundingClientRect(),scale=rect.width/LW;
+  const lx=(e.clientX-rect.left)/scale,ly=(e.clientY-rect.top)/scale;
+  return lx>wx-24&&lx<wx+24&&ly>wbase-62&&ly<wbase+2;
+}
+cv.addEventListener('pointermove',e=>{cv.classList.toggle('over',!!hitTest(e)||onMill(e))});
 cv.addEventListener('click',e=>{
   const hit=hitTest(e);
-  if(!hit)return;
+  if(!hit){if(onMill(e))go(location.hostname.includes('wimbledonmassive')?'/theme/':'https://www.wimbledonmassive.com/theme/');return}
   const url=pageFor(hit);
   if(hit.chat){hit.chat.a.say=hit.chat.b.say=null;const c=hit.chat;c.a.chat=c.b.chat=null;c.a.state=c.b.state='idle';c.a.wait=c.b.wait=1}
   hit.state='idle';hit.wait=2;hit.say=hit.name?`Hi, I'm ${hit.name}!`:'Hi!';hit.sayT=2;
