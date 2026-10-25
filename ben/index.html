@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Ben's Book Club</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: a 1980s teletext service on a TV set. Page 100 is the index of books; each book is its own page (101, 102...). Coloured "fastext" buttons filter by difficulty; you can also type a page number. Single black-screen teletext look. */
+:root{
+  --black:#000;--white:#fff;--yellow:#ffff00;--cyan:#00ffff;--green:#00ff00;--magenta:#ff00ff;--red:#ff0000;--blue:#0000ff;
+  --set:#1b1b22;--bezel:#2d2d36;--muted:#8a8a99;
+  --tt:"VT323","Courier New",monospace;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{margin:0;background:#101015;color:var(--white);font-family:var(--tt);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 32px}
+.wrap{max-width:860px;margin:0 auto;display:grid;gap:14px}
+.back{color:var(--muted);font-family:var(--pixel);font-size:10px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--white)}
+.tv{background:var(--set);border-radius:22px;padding:18px;box-shadow:inset 0 0 0 4px var(--bezel),0 10px 30px rgba(0,0,0,.5)}
+.screen{background:var(--black);border-radius:10px;padding:14px clamp(10px,2.4vw,22px);min-height:420px;position:relative;overflow:hidden;
+  font-size:clamp(17px,2.9vw,26px);line-height:1.12;letter-spacing:.02em}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.22) 2px 4px)}
+.row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 8px}
+.hdr{color:var(--white)}
+.hdr .y{color:var(--yellow)}
+.mast{margin:10px 0 6px;display:grid;gap:4px}
+.blocks{display:flex;gap:6px;flex-wrap:wrap}
+.blocks span{display:inline-block;background:var(--blue);color:var(--yellow);padding:2px 10px;font-size:1.6em;line-height:1}
+.blocks span:nth-child(2){background:var(--red);color:var(--white)}
+.blocks span:nth-child(3){background:var(--green);color:var(--black)}
+.strap{color:var(--cyan)}
+.band{background:var(--blue);color:var(--yellow);padding:2px 6px;margin:8px 0 6px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.list button{all:unset;cursor:pointer;display:grid;grid-template-columns:3.2ch 1fr auto;gap:10px;width:100%;box-sizing:border-box;padding:1px 2px}
+.list button:hover,.list button:focus-visible{background:#202040;outline:none}
+.list .pg{color:var(--yellow)}
+.list .tt{color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.list .df{color:var(--cyan)}
+.list .df.Easy{color:var(--green)}.list .df.Advanced{color:var(--magenta)}
+dl.book{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:6px 0 0}
+dl.book dt{color:var(--cyan)}
+dl.book dd{margin:0;color:var(--white);min-width:0;overflow-wrap:anywhere}
+.btitle{color:var(--yellow);font-size:1.5em;line-height:1.05;margin:6px 0 2px}
+.byline{color:var(--green)}
+.note{color:var(--muted);margin-top:10px}
+.flash{animation:flash 1s steps(1) infinite}
+@keyframes flash{50%{visibility:hidden}}
+.fastext{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.fastext button{font-family:var(--tt);font-size:clamp(16px,2.4vw,22px);border:0;padding:6px 4px;cursor:pointer;color:var(--black)}
+.fastext button:focus-visible{outline:3px solid var(--white);outline-offset:2px}
+.f-red{background:var(--red)!important;color:var(--white)!important}.f-green{background:var(--green)}.f-yellow{background:var(--yellow)}.f-cyan{background:var(--cyan)}
+.remote{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-family:var(--pixel);font-size:9px;color:var(--muted)}
+.remote input{font-family:var(--tt);font-size:22px;width:5ch;text-align:center;background:#000;color:var(--yellow);border:2px solid var(--bezel);padding:2px 4px}
+.remote button{font-family:var(--pixel);font-size:9px;background:var(--bezel);color:var(--white);border:2px solid #000;padding:8px 10px;cursor:pointer}
+@media (prefers-reduced-motion: reduce){.flash{animation:none}}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../">← Back to the Common</a>
+  <div class="tv">
+    <div class="screen" id="screen" aria-live="polite"></div>
+    <div class="fastext" id="fastext">
+      <button type="button" class="f-red" data-f="Easy">Easy</button>
+      <button type="button" class="f-green" data-f="Intermediate">Medium</button>
+      <button type="button" class="f-yellow" data-f="Advanced">Hard</button>
+      <button type="button" class="f-cyan" data-f="">Index</button>
+    </div>
+  </div>
+  <form class="remote" id="remote">
+    <label for="pageNo">GO TO PAGE</label>
+    <input id="pageNo" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="100">
+    <button type="submit">GO</button>
+  </form>
+</div>
+
+<script>
+(function(){
+const SHEET='1s0VSkNu4NRZNVygCB4_De_-Cqhk2swJA_35fAbS3l7M';
+const URL_CSV=`https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv`;
+// Snapshot of the sheet (25 Oct 2026), shown if the live sheet can't be reached
+const SNAPSHOT=[
+ ['Red Rising','Red Rising','Pierce Brown','Sci-fi Fantasy','Space Romans','','Easy','Men','Male'],
+ ['The Will of the Many','Hierarchy','James Islington','Fantasy','Magic System with School','','Intermediate','Everyone','Male'],
+ ['The Name of the Wind','Kingkiller Chronicle','Patrick Rothfuss','Fantasy','Magic System with School','','Intermediate','Everyone','Male'],
+ ['Dungeon Crawler Carl','Dungeon Crawler Carl','Matt Dinniman','Lit RPG','Hitchhikers guide, Videogame with a Cat Companion','','Easy','Gamers','Male'],
+ ['The Way of Kings','Stormlight Archive','Brandon Sanderson','Fantasy','Magic System, Epic lore and world building','','Advanced','Lord of the Rings Fans','Both Male and Female'],
+ ['Assassins Apprentice','Farseer Trilogy','Robin Hobb','Fantasy','Beautiful writing and characters','','Intermediate','Everyone','Male'],
+ ['Mistborn: The Final Empire','Mistborn','Brandon Sanderson','Fantasy','Magic System, Rebellion','','Easy','Everyone','Female'],
+ ['Fourth Wing','Empyrean','Rebecca Yaros','Romantasy','Magic System with School and Dragon Companions','','Easy','Those who want some spicy content with a cool story','Female']
+];
+const COLS=['Book','Series','Author','Genre','Vibe','Good Read Score','Difficulty','Recommended for','Protagonist Gender'];
+let books=[],source='snapshot',filter='',page=100;
+
+function parseCSV(text){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'&&text[i+1]==='"'){f+='"';i++}else if(c==='"')q=false;else f+=c}
+    else if(c==='"')q=true;else if(c===','){row.push(f);f=''}else if(c==='\n'){row.push(f);rows.push(row);row=[];f=''}else if(c!=='\r')f+=c}
+  if(f||row.length){row.push(f);rows.push(row)}
+  return rows;
+}
+function toBooks(rows){return rows.filter(r=>r[0]&&r[0].trim()).map((r,i)=>{const o={pg:101+i};COLS.forEach((k,j)=>o[k]=(r[j]||'').trim());return o})}
+
+const screen=document.getElementById('screen');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function clock(){const d=new Date();return d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function header(){return `<div class="row hdr"><span>P${page} BENFAX</span><span class="y" id="clk">${esc(clock())}</span></div>
+ <div class="mast"><div class="blocks" aria-label="Ben's Book Club"><span>BEN'S</span><span>BOOK</span><span>CLUB</span></div><div class="strap">Fantasy, sci-fi and the odd dragon</div></div>`}
+function render(){
+  let h=header();
+  if(page===100){
+    const list=books.filter(b=>!filter||b['Difficulty']===filter);
+    h+=`<div class="band">${filter?esc(filter.toUpperCase())+' READS':'INDEX OF BOOKS'}</div><ul class="list">`;
+    list.forEach(b=>{h+=`<li><button type="button" data-pg="${b.pg}"><span class="pg">${b.pg}</span><span class="tt">${esc(b['Book'])}</span><span class="df ${esc(b['Difficulty'])}">${esc(b['Difficulty']||'')}</span></button></li>`});
+    if(!list.length)h+='<li class="note">No books at this level yet.</li>';
+    h+=`</ul><div class="note">${source==='live'?'<span class="flash">●</span> Live from the club spreadsheet':'Showing the 25 Oct list'} · Tap a book or enter a page</div>`;
+  }else{
+    const b=books.find(x=>x.pg===page);
+    if(!b){h+=`<div class="band">PAGE ${page} NOT FOUND</div><div class="note">Try page 100 for the index.</div>`}
+    else{
+      const score=b['Good Read Score']||'Not rated yet';
+      h+=`<div class="band">BOOK ${b.pg-100} OF ${books.length}</div>
+      <div class="btitle">${esc(b['Book'])}</div><div class="byline">by ${esc(b['Author'])}</div>
+      <dl class="book">
+       <dt>Series</dt><dd>${esc(b['Series']||'-')}</dd>
+       <dt>Genre</dt><dd>${esc(b['Genre']||'-')}</dd>
+       <dt>Vibe</dt><dd>${esc(b['Vibe']||'-')}</dd>
+       <dt>Difficulty</dt><dd>${esc(b['Difficulty']||'-')}</dd>
+       <dt>Good for</dt><dd>${esc(b['Recommended for']||'-')}</dd>
+       <dt>Hero</dt><dd>${esc(b['Protagonist Gender']||'-')}</dd>
+       <dt>Score</dt><dd>${esc(score)}</dd>
+      </dl>
+      <div class="note">${b.pg>101?`◀ P${b.pg-1}  `:''}P100 INDEX${b.pg<100+books.length?`  P${b.pg+1} ▶`:''}</div>`;
+    }
+  }
+  screen.innerHTML=h;
+  screen.querySelectorAll('[data-pg]').forEach(el=>el.addEventListener('click',()=>go(+el.dataset.pg)));
+}
+function go(p){page=p;render();screen.scrollTop=0}
+setInterval(()=>{const c=document.getElementById('clk');if(c)c.textContent=clock()},1000);
+
+document.getElementById('fastext').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;filter=b.dataset.f;go(100)});
+document.getElementById('remote').addEventListener('submit',e=>{e.preventDefault();const v=parseInt(document.getElementById('pageNo').value,10);if(v>=100&&v<=999){filter='';go(v)}document.getElementById('pageNo').value=''});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(page>100&&e.key==='ArrowRight'&&page<100+books.length)go(page+1);
+  if(page>101&&e.key==='ArrowLeft')go(page-1);
+  if(e.key==='Escape')go(100);
+});
+
+books=toBooks(SNAPSHOT);render();
+fetch(URL_CSV).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{const rows=parseCSV(t);if(rows.length<2)throw 0;const live=toBooks(rows.slice(1));if(live.length){books=live;source='live';render()}}).catch(()=>{});
+})();
+</script>
+
+</body>
+</html>
