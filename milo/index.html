@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Milo's Treat Stand</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: a bluebell wood (from Milo's photo) with Milo big in the middle on his tree stump; a row of treat buttons beneath; a tummy meter. Single spring-wood look in the same pixel world as the Common. */
+:root{
+  --wood:#16301c;
+  --leaf:#7bc86a;
+  --ink:#fffbe8;
+  --muted:#b9d6b0;
+  --card:#21402a;
+  --pink:#f08cb4;
+  --gold:#f6d34a;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{margin:0;background:var(--wood);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 36px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px}
+.back{color:var(--muted);font-size:10px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink)}
+h1{margin:0;font-weight:400;text-align:center;font-size:clamp(16px,4vw,30px);line-height:1.5;text-shadow:3px 3px 0 #000}
+.sub{margin:0;text-align:center;font-size:9px;color:var(--muted);line-height:1.8}
+.stage{border:4px solid #000;box-shadow:6px 6px 0 #000;background:#9fd27f}
+#wood{display:block;width:100%;height:auto;image-rendering:pixelated}
+.meter{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;font-size:9px}
+.bar{height:16px;border:3px solid #000;background:#0f2214;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--pink),var(--gold));transition:width .4s}
+.count{color:var(--gold);font-variant-numeric:tabular-nums}
+.treats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.treat{font-family:var(--pixel);background:var(--card);color:var(--ink);border:3px solid #000;box-shadow:4px 4px 0 #000;padding:10px 6px;display:grid;justify-items:center;gap:8px;cursor:pointer;font-size:8px;line-height:1.5}
+.treat:hover{background:#2c5236}
+.treat:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #000}
+.treat:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.treat:disabled{opacity:.5;cursor:not-allowed}
+.treat canvas{width:40px;height:40px;image-rendering:pixelated}
+.walk{justify-self:center;font-family:var(--pixel);font-size:11px;background:var(--gold);color:#1a1405;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 16px;cursor:pointer}
+.walk[hidden]{display:none}
+.walk:focus-visible{outline:3px solid #fff;outline-offset:3px}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../">← Back to the Common</a>
+  <h1>Milo's Treat Stand</h1>
+  <p class="sub">Pick a treat for Milo. He has opinions.</p>
+  <div class="stage"><canvas id="wood" aria-label="Milo the black cockapoo sitting on a tree stump in a bluebell wood"></canvas></div>
+  <div class="meter" aria-live="polite">
+    <span>TUMMY</span>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" id="bar"><i></i></div>
+    <span class="count" id="count">0 TREATS</span>
+  </div>
+  <div class="treats" id="treats"></div>
+  <button class="walk" id="walk" type="button" hidden>TAKE MILO FOR A WALK</button>
+</div>
+
+<script>
+(function(){
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TREATS=[
+ {id:'bone',name:'Bone',fill:2,line:'BEST. DAY. EVER.',pal:{W:'#f4efe2',w:'#cfc6b0'},rows:["WW......WW","WWW....WWW",".WWWWWWWW.",".WwwwwwwW.","WWW....WWW","WW......WW"]},
+ {id:'sausage',name:'Sausage',fill:2,line:'Is it... for me?!',pal:{S:'#b85a32',s:'#e08a5a'},rows:[".SSSSSSSS.","SSssssssSS","SSSSSSSSSS",".SSSSSSSS."]},
+ {id:'cheese',name:'Cheese',fill:1,line:'Cheese. CHEESE.',pal:{Y:'#f6c945',y:'#d9a52a'},rows:["......YY","....YYYY","..YYyYYY","YYYYYYyY","YyYYYYYY","YYYYYYYY"]},
+ {id:'carrot',name:'Carrot',fill:1,line:'Crunchy. Fine.',pal:{O:'#f08a2a',G:'#5ab04a'},rows:["......G.G","....OOOGG","..OOOOOO.",".OOOOOO..","OOOO.....","OO......."]},
+ {id:'biscuit',name:'Dog biscuit',fill:1,line:'Sit? Already sat.',pal:{B:'#c98a4a',b:'#8a5a2a'},rows:[".BBBBBB.","BBbBBbBB","BBBBBBBB","BbBBBbBB",".BBBBBB."]},
+ {id:'ball',name:'Tennis ball',fill:0,line:'THROW IT THROW IT',pal:{Y:'#d8f04a',W:'#ffffff'},rows:["..YYYY..",".YWYYYY.","YYWYYYYY","YYYWWYYY","YYYYYWYY",".YYYYWY.","..YYYY.."]}
+];
+const FULL=10;
+let tummy=0,count=0;
+
+// ---------- sound ----------
+let ac=null;function tone(f,d,type,v,delay){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.07,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+const woof=()=>{tone(220,.12,'sawtooth',.09);tone(180,.14,'sawtooth',.08,.13)};
+const chomp=()=>{tone(140,.05,'square',.07);tone(120,.05,'square',.07,.09);tone(110,.05,'square',.07,.18)};
+
+// ---------- scene ----------
+const cv=document.getElementById('wood'),ctx=cv.getContext('2d');
+const LW=160,LH=96;let U=4;
+function size(){const w=cv.parentElement.clientWidth;U=Math.max(2,Math.floor(w/LW));cv.width=LW*U;cv.height=LH*U}
+new ResizeObserver(size).observe(cv.parentElement);size();
+const px=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x)*U,Math.round(y)*U,Math.ceil(w)*U,Math.ceil(h)*U)};
+function rng(s){return()=>{s=(s*16807)%2147483647;return s/2147483647}}
+
+// Milo, front-on and sitting, 22 x 26
+const MILO=[
+ "......BBBBBBBBBB......",
+ ".....BbBBbBBbBBbB.....",
+ "....BBBBBBBBBBBBBB....",
+ "..BBBBbBBBBBBBBbBBBB..",
+ ".BBbBBBBeBBBBeBBBBbBB.",
+ ".BBBBBBBBBBBBBBBBBBBB.",
+ "BBbBBBBBBBNNBBBBBBBbBB",
+ "BBBBBBBBBNNNNBBBBBBBBB",
+ "BBbBBBBBBBNNBBBBBBBbBB",
+ "BBBBBBBBBBTTBBBBBBBBBB",
+ ".BBbBBBBBTTTTBBBBBbBB.",
+ ".BBBBBBBBTTTTBBBBBBBB.",
+ "..BBB.BGGGTTGGGB.BBB..",
+ "......BGGGGGGGGB......",
+ ".....BBBBBGGBBBBB.....",
+ ".....BbBBBGSGBBbB.....",
+ ".....BBBBBGGGBBBB.....",
+ ".....BbBBBBGBBBbB.....",
+ ".....BBBBBBBBBBBB.....",
+ "....BBBBbBBBBbBBBB....",
+ "....BBBBBBBBBBBBBB....",
+ "....BBbB.BBBB.BbBB....",
+ "....BBBB.BBBB.BBBB....",
+ "....BBBB.BBBB.BBBB....",
+ "...BBBBB.BBBB.BBBBB...",
+ "...bbbbb.bbbb.bbbbb..."
+];
+const MP={B:'#151515',b:'#363636',e:'#7a7a7a',N:'#000000',T:'#f08cb4',G:'#55595f',S:'#c9cdd2'};
+const MOUTH_SHUT=new Set([9,10,11]);   // tongue rows hidden while chomping
+
+let flying=null,chompT=0,wagT=0,bubble='Woof! Treat?',bubbleT=3.5,hearts=[],walking=false,walkX=0;
+function scene(){
+  const r=rng(11);
+  // canopy and light
+  px(0,0,LW,LH,'#a8dc84');
+  for(let y=0;y<34;y+=2)for(let x=0;x<LW;x+=2){if(r()<0.55)px(x,y,2,2,['#7bc86a','#9ad87c','#5ab04a','#c4ec9a'][(r()*4)|0])}
+  // trunks
+  [[8,4],[30,3],[52,2],[110,3],[132,5],[150,2]].forEach(([x,w])=>{px(x,10,w,52,'#6a5a4a');px(x,10,1,52,'#8a7a66')});
+  // bluebell floor
+  px(0,58,LW,LH-58,'#6a8a4a');
+  for(let i=0;i<520;i++){const x=(r()*LW)|0,y=58+((r()*(LH-58))|0);px(x,y,1,1,r()<0.7?'#8a7ad8':'#5ab04a')}
+  // path
+  for(let y=62;y<LH;y++){const half=6+(y-62)*0.6;px(118-half+(y-62)*0.4,y,half*2,1,'#a8764a')}
+  // stump
+  px(58,72,44,20,'#6a4a2a');px(56,70,48,4,'#b08a5a');px(60,71,40,2,'#d8b07a');px(58,90,44,4,'#4a321c');
+}
+function drawMilo(t){
+  const bx=69,by=46+(reduced?0:Math.round(Math.sin(t*3)*0.4));
+  // tail wag behind
+  const wag=wagT>0&&!reduced?Math.round(Math.sin(t*28)*2):0;
+  px(bx+21+wag,by+18,3,2,'#151515');px(bx+22+wag,by+16,2,2,'#151515');
+  MILO.forEach((row,j)=>{for(let i=0;i<row.length;i++){let ch=row[i];
+    if(chompT>0&&ch==='T'&&Math.floor(t*12)%2===0)ch='B';
+    const c=MP[ch];if(!c)continue;px(bx+i,by+j,1,1,c)}});
+}
+function drawTreat(item,x,y,scale){
+  item.rows.forEach((row,j)=>{for(let i=0;i<row.length;i++){const c=item.pal[row[i]];if(!c)continue;px(x+i*scale,y+j*scale,scale,scale,c)}});
+}
+function drawBubble(){
+  if(bubbleT<=0)return;
+  const fs=Math.max(8,U*2.3);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textBaseline='top';
+  const tw=ctx.measureText(bubble).width,pad=fs*.6,bw=tw+pad*2,bh=fs+pad*2;
+  const bx=Math.min(cv.width-bw-6,Math.max(6,80*U-bw/2)),by=34*U-bh;
+  ctx.fillStyle='#000';ctx.fillRect(bx-3,by-3,bw+6,bh+6);ctx.fillStyle='#fff';ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle='#000';ctx.fillRect(80*U-4,by+bh,8,6);
+  ctx.fillStyle='#151515';ctx.fillText(bubble,bx+pad,by+pad+1);
+}
+const base=document.createElement('canvas');
+let last=performance.now(),baked=0;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;
+  chompT-=dt;wagT-=dt;bubbleT-=dt;
+  if(baked!==cv.width){baked=cv.width;base.width=cv.width;base.height=cv.height;const real=ctx.canvas;scene();base.getContext('2d').drawImage(real,0,0)}
+  ctx.drawImage(base,0,0);
+  if(walking){walkX+=dt*30;if(walkX>LW+30){walking=false;walkX=0;bubble='That was ace.';bubbleT=3;wagT=2}}
+  if(!walking)drawMilo(t);
+  else{ctx.save();ctx.translate(walkX*U,0);drawMilo(t);ctx.restore()}
+  if(flying){
+    const f=Math.min(1,(now-flying.t0)/(reduced?200:550));
+    const x=flying.sx+(80-flying.sx)*f,y=94+(56-94)*f-Math.sin(f*Math.PI)*22;
+    drawTreat(flying.item,x-4,y-3,1);
+    if(f>=1){eat(flying.item);flying=null}
+  }
+  hearts=hearts.filter(h=>{h.y-=dt*14;h.life-=dt;if(h.life<=0)return false;const c='#f08cb4';px(h.x,h.y,1,1,c);px(h.x+2,h.y,1,1,c);px(h.x,h.y+1,3,1,c);px(h.x+1,h.y+2,1,1,c);return true});
+  drawBubble();
+  requestAnimationFrame(loop);
+}
+
+// ---------- treats ----------
+const wrap=document.getElementById('treats'),bar=document.getElementById('bar'),countEl=document.getElementById('count'),walkBtn=document.getElementById('walk');
+const buttons=[];
+TREATS.forEach(item=>{
+  const b=document.createElement('button');b.type='button';b.className='treat';b.setAttribute('aria-label',`Give Milo a ${item.name.toLowerCase()}`);
+  const c=document.createElement('canvas');c.width=40;c.height=40;const g=c.getContext('2d');const s=4,w=item.rows[0].length,h=item.rows.length,ox=Math.floor((10-w)/2),oy=Math.floor((10-h)/2);
+  item.rows.forEach((row,j)=>{for(let i=0;i<w;i++){const col=item.pal[row[i]];if(!col)continue;g.fillStyle=col;g.fillRect((ox+i)*s,(oy+j)*s,s,s)}});
+  const n=document.createElement('span');n.textContent=item.name;b.append(c,n);
+  b.addEventListener('click',()=>{if(flying||walking||tummy>=FULL)return;flying={item,t0:performance.now(),sx:30+Math.random()*100};wagT=1});
+  wrap.appendChild(b);buttons.push(b);
+});
+function eat(item){
+  chompT=item.fill?0.7:0;wagT=2;count++;tummy=Math.min(FULL,tummy+item.fill);
+  item.fill?chomp():woof();
+  bubble=item.line;bubbleT=2.4;
+  for(let i=0;i<5;i++)hearts.push({x:70+Math.random()*20,y:44+Math.random()*6,life:1+Math.random()*.6});
+  bar.firstElementChild.style.width=(tummy/FULL*100)+'%';bar.setAttribute('aria-valuenow',tummy);
+  countEl.textContent=count+(count===1?' TREAT':' TREATS');
+  if(tummy>=FULL){bubble='Stuffed. Walkies?';bubbleT=999;buttons.forEach(b=>b.disabled=true);walkBtn.hidden=false;setTimeout(woof,500)}
+}
+walkBtn.addEventListener('click',()=>{walking=true;walkX=0;tummy=0;bar.firstElementChild.style.width='0%';bar.setAttribute('aria-valuenow',0);buttons.forEach(b=>b.disabled=false);walkBtn.hidden=true;bubbleT=0;woof()});
+
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>requestAnimationFrame(loop));
+})();
+</script>
+
+</body>
+</html>
