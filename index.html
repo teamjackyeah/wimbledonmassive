@@ -48,6 +48,9 @@ canvas.over{cursor:pointer}
 .invite-big{margin:0;font-size:clamp(12px,2.4vw,18px);line-height:1.6;color:var(--cream);text-wrap:balance}
 .invite-big b{color:#f6d34a;font-weight:400}
 .invite-small{margin:0;font-size:clamp(9px,1.4vw,11px);line-height:2;color:var(--muted);text-wrap:balance}
+.invite-list{margin:0 auto;padding:0;list-style:none;display:grid;gap:8px;text-align:left;font-size:clamp(9px,1.4vw,11px);line-height:1.8;color:var(--cream)}
+.invite-list li{display:flex;gap:10px;align-items:baseline}
+.invite-list li::before{content:"";flex:none;width:7px;height:7px;background:#f6d34a;transform:translateY(-1px)}
 @media (min-width:700px){.title span{display:inline}.sub{top:calc(14px + clamp(14px,3.2vw,30px) * 1.7)}}
 </style>
 
@@ -60,7 +63,12 @@ canvas.over{cursor:pointer}
   <p class="caption">Tap someone to visit their page, or tap the windmill for the theme tune</p>
   <div class="invite">
     <p class="invite-big">We need <b>YOU</b> on Wimbledon Common.</p>
-    <p class="invite-small">WhatsApp Jack a photo you like of yourself and you'll appear here!</p>
+    <p class="invite-small">WhatsApp Jack:</p>
+    <ul class="invite-list">
+      <li>a photo of yourself</li>
+      <li>your birthday</li>
+      <li>a whimsical idea for your personal page</li>
+    </ul>
   </div>
 </div>
 
