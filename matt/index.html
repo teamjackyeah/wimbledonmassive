@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Matt's Five-a-Side</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: a floodlit five-a-side cage seen from behind the penalty spot; Matt in goal; tap where to shoot; a 5-penalty scoreboard above. Single night-pitch look in the same pixel world as the Common. */
+:root{
+  --night:#0d1626;
+  --turf:#2f8a3f;
+  --ink:#f4f7f0;
+  --muted:#9fb0c4;
+  --score:#141a12;
+  --led:#ffb02e;
+  --goal:#7bd36a;
+  --miss:#e8504a;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px}
+.back{color:var(--muted);font-size:10px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink)}
+h1{margin:0;font-weight:400;font-size:clamp(14px,3.4vw,26px);line-height:1.5;text-align:center;text-shadow:3px 3px 0 #000}
+.board{background:var(--score);border:4px solid #000;box-shadow:0 0 0 3px #2a3a2a;padding:10px 14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.board .lbl{font-size:9px;color:var(--muted)}
+.shots{display:flex;gap:8px}
+.shot{width:18px;height:18px;border:3px solid #3a4a3a;background:#0a0e0a}
+.shot.g{background:var(--goal);border-color:#000}
+.shot.s{background:var(--miss);border-color:#000}
+.led{font-size:clamp(14px,2.6vw,20px);color:var(--led);text-shadow:0 0 6px rgba(255,176,46,.6);font-variant-numeric:tabular-nums}
+.stage{position:relative;border:4px solid #000;box-shadow:6px 6px 0 #000}
+#pitch{display:block;width:100%;height:auto;image-rendering:pixelated;cursor:crosshair;touch-action:manipulation}
+#pitch:focus-visible{outline:3px solid var(--led);outline-offset:3px}
+.again[hidden]{display:none}
+.msg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-size:clamp(18px,5vw,40px);color:#fff;text-shadow:4px 4px 0 #000;pointer-events:none;white-space:nowrap}
+.hint{margin:0;text-align:center;font-size:9px;color:var(--muted);line-height:1.8}
+.again{justify-self:center;font-family:var(--pixel);font-size:11px;background:var(--led);color:#1a1205;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 16px;cursor:pointer}
+.again[hidden]{display:none}
+.again:focus-visible{outline:3px solid #fff;outline-offset:3px}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../">← Back to the Common</a>
+  <h1>Matt's Five-a-Side</h1>
+  <div class="board" aria-live="polite">
+    <span class="lbl">PENALTIES</span>
+    <div class="shots" id="shots"></div>
+    <span class="led" id="led">YOU 0 - 0 MATT</span>
+  </div>
+  <div class="stage">
+    <canvas id="pitch" tabindex="0" aria-label="Penalty shootout. Tap a spot in the goal to shoot. Keys 1 to 6 also shoot at the six areas of the goal."></canvas>
+    <div class="msg" id="msg" aria-hidden="true"></div>
+  </div>
+  <p class="hint" id="hint">Tap anywhere in the goal to shoot. Five penalties. Can you beat Matt?</p>
+  <button class="again" id="again" type="button" hidden>GO AGAIN</button>
+</div>
+
+<script>
+(function(){
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=document.getElementById('pitch'),ctx=cv.getContext('2d');
+const msgEl=document.getElementById('msg'),led=document.getElementById('led'),shotsEl=document.getElementById('shots'),again=document.getElementById('again'),hint=document.getElementById('hint');
+
+// Matt in goal: green keeper top, gloves
+const MATT=["...KKKKKK...","..KHHHHHHK..",".KHHhHHhHHK.",".KSSSSSSSSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KBSWWWWSBK.",".KBBSSSSBBK.","..KKBBBBKK..",".KTTTWWTTTK.","KTTTTTTTTTTK","GTTTTTTTTTTG","GKKTTTTTTKKG"];
+const LEGS=["..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const PAL={K:'#151515',W:'#ffffff',H:'#5a3f2c',h:'#3f2a1c',S:'#f0c2a2',B:'#b88f74',T:'#f2a33a',P:'#20263b',O:'#ffffff',G:'#7bd36a'};
+const LINES={save:['Get in!','Not today!','Too easy.','Matt, you legend.'],goal:['Top bins!','Oof.','Unstoppable.','I was unsighted!']};
+
+// logical canvas
+const LW=200,LH=120;let U=4;
+const GOAL={x:46,y:22,w:108,h:46};      // goal mouth
+const SPOT={x:100,y:104};
+function size(){const w=cv.parentElement.clientWidth;U=Math.max(1,Math.floor(w/LW));cv.width=LW*U;cv.height=LH*U;cv.style.height='auto'}
+new ResizeObserver(size).observe(cv.parentElement);size();
+const px=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x)*U,Math.round(y)*U,Math.ceil(w)*U,Math.ceil(h)*U)};
+
+// game state
+let taken=[],phase='ready',ball={x:SPOT.x,y:SPOT.y,r:3},shot=null,keeper={x:0,y:0,dive:0},t0=0,msg='',msgT=0;
+const ZONES=[[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]];  // col,row
+function zoneCentre(c,r){return{x:GOAL.x+GOAL.w*(c+0.5)/3,y:GOAL.y+GOAL.h*(r+0.5)/2}}
+function renderBoard(){
+  shotsEl.innerHTML='';
+  for(let i=0;i<5;i++){const s=document.createElement('span');s.className='shot'+(taken[i]==='g'?' g':taken[i]==='s'?' s':'');s.setAttribute('aria-label',taken[i]==='g'?'goal':taken[i]==='s'?'saved':'not taken');shotsEl.appendChild(s)}
+  const g=taken.filter(x=>x==='g').length,s=taken.filter(x=>x==='s').length;
+  led.textContent=`YOU ${g} - ${s} MATT`;
+}
+renderBoard();
+
+function beep(f,d,type,v,delay){try{window._ac=window._ac||new (window.AudioContext||window.webkitAudioContext)();const a=window._ac,t=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.08,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+
+function shoot(tx,ty){
+  if(phase!=='ready'||taken.length>=5)return;
+  // clamp to inside the goal frame
+  tx=Math.min(GOAL.x+GOAL.w-3,Math.max(GOAL.x+3,tx));ty=Math.min(GOAL.y+GOAL.h-3,Math.max(GOAL.y+3,ty));
+  const col=Math.min(2,Math.floor((tx-GOAL.x)/(GOAL.w/3))),row=ty<GOAL.y+GOAL.h/2?0:1;
+  // Matt guesses: centre-ish more often, corners less
+  const pick=Math.random();
+  const kc=pick<0.36?0:pick<0.72?2:1,kr=Math.random()<0.5?0:1;
+  const corner=(col!==1&&row===0);           // top corners are harder to reach
+  const saved=kc===col&&(kr===row||Math.random()<0.5)&&!(corner&&Math.random()<0.35);
+  shot={tx,ty,col,row,kc,kr,saved};phase='flying';t0=performance.now();beep(180,.08,'square',.12);
+}
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*LW,y=(e.clientY-r.top)/r.height*LH;
+  shoot(x,y);
+});
+cv.addEventListener('keydown',e=>{const n=parseInt(e.key,10);if(n>=1&&n<=6){const z=ZONES[n-1],c=zoneCentre(z[0],z[1]);shoot(c.x,c.y)}});
+again.addEventListener('click',()=>{taken=[];renderBoard();again.hidden=true;hint.textContent='Tap anywhere in the goal to shoot. Five penalties. Can you beat Matt?';msgEl.textContent='';phase='ready';ball={x:SPOT.x,y:SPOT.y,r:3};keeper={x:0,y:0,dive:0};cv.focus()});
+
+function finish(){
+  const g=taken.filter(x=>x==='g').length;
+  const verdict=g>=4?`You put ${g} past Matt. Absolute scenes.`:g>=2?`${g} out of 5. Matt's buying the first round.`:`${g} out of 5. Matt's wall stands firm.`;
+  hint.textContent=verdict;again.hidden=false;
+}
+
+function update(now){
+  if(phase==='flying'){
+    const d=reduced?300:520,f=Math.min(1,(now-t0)/d);
+    const e=1-Math.pow(1-f,2);
+    ball.x=SPOT.x+(shot.tx-SPOT.x)*e;ball.y=SPOT.y+(shot.ty-SPOT.y)*e-Math.sin(f*Math.PI)*6;ball.r=3-f*1.4;
+    const kd=Math.min(1,(now-t0)/380);
+    const target=zoneCentre(shot.kc,shot.kr);
+    keeper.x=(target.x-100)*kd*0.85;keeper.y=(shot.kr===0?-8:2)*kd;keeper.dive=(shot.kc===0?-1:shot.kc===2?1:0)*kd;
+    if(f>=1){
+      if(shot.saved){ball.x=keeper.x+100+(shot.kc===0?-10:shot.kc===2?10:0);ball.y+=4;}
+      taken.push(shot.saved?'s':'g');renderBoard();
+      const L=shot.saved?LINES.save:LINES.goal;msg=L[Math.random()*L.length|0];msgT=1.6;
+      msgEl.textContent=shot.saved?'SAVED!':'GOAL!';
+      if(shot.saved){beep(220,.25,'sawtooth',.08)}else{beep(523,.12);beep(659,.12,'square',.08,.12);beep(784,.3,'square',.08,.24)}
+      phase='after';t0=now;
+    }
+  }else if(phase==='after'){
+    if(now-t0>1400){
+      msgEl.textContent='';
+      if(taken.length>=5){phase='done';finish()}
+      else{phase='ready';ball={x:SPOT.x,y:SPOT.y,r:3};keeper={x:0,y:0,dive:0}}
+    }
+  }
+}
+
+function drawMatt(){
+  const bx=100-6+Math.round(keeper.x),by=GOAL.y+GOAL.h-17-1+Math.round(keeper.y);
+  const rows=MATT.concat(LEGS);
+  ctx.save();
+  if(keeper.dive){
+    const cx=(bx+6)*U,cy=(by+9)*U;ctx.translate(cx,cy);ctx.rotate(keeper.dive*Math.PI/2.6);ctx.translate(-cx,-cy);
+  }
+  rows.forEach((r,j)=>{for(let i=0;i<12;i++){const c=PAL[r[i]];if(!c)continue;px(bx+i,by+j,1,1,c)}});
+  ctx.restore();
+}
+function draw(now){
+  // sky and floodlights
+  px(0,0,LW,LH,'#0d1626');
+  [[12,4],[188,4]].forEach(([x,y])=>{px(x-1,y,3,16,'#3a4458');px(x-4,y-2,9,4,'#e8ecf2');});
+  // cage fence
+  for(let x=0;x<LW;x+=4){px(x,6,1,58,'#1c2a3a')}
+  px(0,6,LW,1,'#2a3a50');
+  // turf with stripes
+  px(0,64,LW,LH-64,'#2f8a3f');for(let y=64;y<LH;y+=8)px(0,y,LW,4,'#2a7a38');
+  // markings
+  px(30,GOAL.y+GOAL.h,140,1,'#e8f0e8');px(40,90,120,1,'#e8f0e8');px(40,GOAL.y+GOAL.h,1,22,'#e8f0e8');px(159,GOAL.y+GOAL.h,1,22,'#e8f0e8');
+  px(SPOT.x-1,SPOT.y,3,1,'#e8f0e8');
+  // net
+  px(GOAL.x,GOAL.y,GOAL.w,GOAL.h,'#16243a');
+  for(let x=GOAL.x;x<GOAL.x+GOAL.w;x+=4)px(x,GOAL.y,1,GOAL.h,'#2c3e5a');
+  for(let y=GOAL.y;y<GOAL.y+GOAL.h;y+=4)px(GOAL.x,y,GOAL.w,1,'#2c3e5a');
+  // aim guide while ready
+  if(phase==='ready'){ctx.globalAlpha=.12;for(let c=1;c<3;c++)px(GOAL.x+GOAL.w*c/3,GOAL.y,1,GOAL.h,'#fff');px(GOAL.x,GOAL.y+GOAL.h/2,GOAL.w,1,'#fff');ctx.globalAlpha=1}
+  drawMatt();
+  // posts
+  px(GOAL.x-2,GOAL.y-2,GOAL.w+4,2,'#ffffff');px(GOAL.x-2,GOAL.y,2,GOAL.h,'#ffffff');px(GOAL.x+GOAL.w,GOAL.y,2,GOAL.h,'#ffffff');
+  // ball and shadow
+  const r=Math.max(1,ball.r);
+  ctx.globalAlpha=.3;px(ball.x-r,Math.max(ball.y,64)+r,r*2,1,'#000');ctx.globalAlpha=1;
+  px(ball.x-r,ball.y-r,r*2,r*2,'#ffffff');if(r>2)px(ball.x-1,ball.y-1,1,1,'#151515');
+  // Matt's line
+  if(msgT>0&&msg){
+    const fs=Math.max(8,U*2.2);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textBaseline='top';
+    const tw=ctx.measureText(msg).width,pad=fs*.6,bw=tw+pad*2,bh=fs+pad*2;
+    const bx=Math.min(cv.width-bw-6,Math.max(6,(100+keeper.x)*U-bw/2)),by=(GOAL.y-12)*U-bh/2;
+    ctx.fillStyle='#000';ctx.fillRect(bx-3,by-3,bw+6,bh+6);ctx.fillStyle='#fff';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#151515';ctx.fillText(msg,bx+pad,by+pad+1);
+  }
+}
+let last=performance.now();
+function loop(now){const dt=(now-last)/1000;last=now;msgT-=dt;update(now);draw(now);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
