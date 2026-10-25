@@ -60,7 +60,7 @@ canvas.over{cursor:pointer}
     <h1 class="title"><span>Wimbledon</span> <span>Massive</span></h1>
     <p class="sub">Wimbledon Common, SW19</p>
   </div>
-  <p class="caption">Tap someone to visit their page, or tap the windmill for the theme tune</p>
+  <p class="caption">Tap someone (or Milo) to visit their page, or tap the windmill for the theme tune</p>
   <div class="invite">
     <p class="invite-big">We need <b>YOU</b> on Wimbledon Common.</p>
     <p class="invite-small">WhatsApp Jack:</p>
@@ -89,6 +89,18 @@ const BODY={
  "...KKKKKK...","..KHHHHHHK..",".KHHHhHHHHK.",".KHHSSSSHHK.",
  ".KHSSSSSSHK.",".KHSKSSKSHK.",".KHSSSSSSHK.",".KHSSWWSSHK.",
  "KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTTSK","KSKTTTTTTKSK"],
+ lauren:[
+ "..KKKKKKKK..",".KHHHHHHHHK.","KHHHhHHHHHHK","KHHSSSSSSHHK",
+ "KHSSSSSSSSHK","KHSKSSSSKSHK","KHSSSSSSSSHK","KHSSSWWSSSHK",
+ "KHHKSSSSKHHK","KHHTLTTMTHHK","KHHTTMTTLHHK","KSHTLTTTTHSK","KSKTTMTLTKSK"],
+ matt:[
+ "...KKKKKK...","..KHHHHHHK..",".KHHhHHhHHK.",".KSSSSSSSSK.",
+ ".KSKSSSSKSK.",".KSSSSSSSSK.",".KBSWWWWSBK.",".KBBSSSSBBK.",
+ "..KKBBBBKK..",".KTTTWWTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKSK"],
+ ben:[
+ "..KKKKKKKK..",".KHHHHHHHHK.","KHHhHHHhHHHK","KHHHHhHHHHHK",
+ ".KHSHHSSHSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSBBBBBBSK.",
+ ".KSSWWWWSSK.","..KKSBBSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSKTTTTTTKSK"],
  gen:[
  "...KKKKKK...","..KHHHHHHK..",".KHHHHhHHHK.",".KSSSSSSSSK.",
  ".KSSSSSSSSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSSSWWSSSK.",
@@ -101,12 +113,15 @@ const LEGS=[
 const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
 const CHARS=[
  {name:'Jack', rows:BODY.jack, pal:{...base,H:'#9a9a9a',h:'#6b6b6b',S:'#f2c4a0',T:'#bcd4ee',L:'#1f8a42',P:'#2b3550'}},
- {name:'Ellie',rows:BODY.ellie,pal:{...base,H:'#6b4a33',h:'#4a3222',S:'#f4c9ae',T:'#5a6a3a',P:'#2b2b35'}}
+ {name:'Ellie',rows:BODY.ellie,pal:{...base,H:'#6b4a33',h:'#4a3222',S:'#f4c9ae',T:'#5a6a3a',P:'#2b2b35'}},
+ {name:'Lauren',rows:BODY.lauren,pet:true,pal:{...base,H:'#2a1a14',h:'#43291d',S:'#ecbd9c',T:'#201c33',L:'#f08cb4',M:'#f6c945',P:'#201c33',O:'#c9a24e'}},
+ {name:'Matt',rows:BODY.matt,pal:{...base,H:'#5a3f2c',h:'#3f2a1c',S:'#f0c2a2',B:'#b88f74',T:'#2f7d4a',P:'#20263b'}},
+ {name:'Ben',rows:BODY.ben,pal:{...base,H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'}}
 ];
 
 /* ---------- seasons and birthdays ---------- */
 // Birthdays as 'MM-DD', e.g. Jack:'03-14'
-const BIRTHDAYS={Jack:null,Ellie:null};
+const BIRTHDAYS={Jack:null,Ellie:null,Lauren:null,Matt:null,Ben:null};
 const SKY_DAY=['#5aa3e6','#68afeb','#78bcf0','#8bc9f3','#a2d6f5','#bce3f6'];
 const GREEN_FAR=['#4a7f55','#5f9466','#76a97a'],GREEN_NEAR=['#24552d','#2f6b3a','#3f8248'];
 const AUT_FAR=[['#a5642c','#c97d33','#e0a24a'],['#8f4a24','#b25a2b','#d07a3a'],GREEN_FAR];
@@ -354,8 +369,18 @@ function update(dt){
   }
 }
 
+const MILO=[".......BBB.","......BBbBB","......BeBBB","BB....BBBBN","BbBBBBbBBTT",".BbBGGBBB..",".BBBBBBBB..",".BB.B..BB.."];
+const MILO_PAL={B:'#141414',b:'#3a3a3a',e:'#6a6a6a',N:'#000000',T:'#f08cb4',G:'#6b6f78'};
+function drawMilo(p){
+  const x=Math.round(p.x),y=Math.round(p.y);
+  const step=p.state==='walk'&&Math.floor(p.anim*8)%2===1?1:0;
+  const left=p.flip?x+5:x-16,top=y-7-step;
+  ctx.globalAlpha=0.25;px(ctx,left+1,y,9,1,'#000');ctx.globalAlpha=1;
+  MILO.forEach((row,j)=>{for(let i=0;i<11;i++){const c=MILO_PAL[row[i]];if(!c)continue;const ix=p.flip?10-i:i;px(ctx,left+ix,top+j,1,1,c)}});
+}
 function drawPerson(p){
   const x=Math.round(p.x),y=Math.round(p.y),left=x-6,top=y-17;
+  if(p.pet)drawMilo(p);
   ctx.globalAlpha=0.25;px(ctx,x-5,y,10,1,'#000');px(ctx,x-4,y+1,8,1,'#000');ctx.globalAlpha=1;
   const frame=p.state==='walk'&&Math.floor(p.anim*6)%2===1?1:0;
   const rows=p.rows.concat(LEGS[frame]);
@@ -423,7 +448,7 @@ function resize(){
 
 /* ---------- tap a person to visit their page ---------- */
 const LINKS={Jack:'https://teamjackyeah.com'};
-function pageFor(p){return p.name?(LINKS[p.name]||'https://wimbledonmassive.com/'+p.name.toLowerCase()):null}
+function pageFor(p){if(!p.name)return null;if(LINKS[p.name])return LINKS[p.name];const slug=p.name.toLowerCase();return location.hostname.includes('wimbledonmassive')?'/'+slug+'/':'https://www.wimbledonmassive.com/'+slug+'/'}
 function go(url){
   if(window.self!==window.top){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
   else location.href=url;
@@ -438,8 +463,15 @@ function onMill(e){
   const lx=(e.clientX-rect.left)/scale,ly=(e.clientY-rect.top)/scale;
   return lx>wx-24&&lx<wx+24&&ly>wbase-62&&ly<wbase+2;
 }
-cv.addEventListener('pointermove',e=>{cv.classList.toggle('over',!!hitTest(e)||onMill(e))});
+function hitMilo(e){
+  const rect=cv.getBoundingClientRect(),scale=rect.width/LW;
+  const lx=(e.clientX-rect.left)/scale,ly=(e.clientY-rect.top)/scale;
+  return people.find(p=>p.pet&&(()=>{const left=p.flip?p.x+5:p.x-16;return lx>left-1&&lx<left+12&&ly>p.y-9&&ly<p.y+2})());
+}
+cv.addEventListener('pointermove',e=>{cv.classList.toggle('over',!!hitTest(e)||onMill(e)||!!hitMilo(e))});
 cv.addEventListener('click',e=>{
+  const dog=hitMilo(e);
+  if(dog){go(location.hostname.includes('wimbledonmassive')?'/milo/':'https://www.wimbledonmassive.com/milo/');return}
   const hit=hitTest(e);
   if(!hit){if(onMill(e))go(location.hostname.includes('wimbledonmassive')?'/theme/':'https://www.wimbledonmassive.com/theme/');return}
   const url=pageFor(hit);
