@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ben's World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Ben's corner of the Common: Caesar's Well and Queensmere. Same framed 8-bit screen as the homepage. Ben and Jack wander in and talk in (mostly) Shakespeare. */
+:root{
+  --ground:#24452a;--frame:#162418;--cream:#f4ecd2;--muted:#b9c9a8;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--cream);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;box-sizing:border-box}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.back{color:var(--muted);font-size:10px;text-decoration:none;align-self:flex-start}
+.back:hover,.back:focus-visible{color:#fff}
+.screen{position:relative;width:100%;height:clamp(360px,72vh,620px);border:4px solid var(--frame);
+  box-shadow:0 0 0 4px #3c6b40,0 8px 0 4px var(--frame);overflow:hidden;background:#7cc3ee}
+.screen,.screen *{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;touch-action:manipulation;outline:none}
+canvas.over{cursor:pointer}
+.title{position:absolute;top:14px;left:16px;margin:0;pointer-events:none;font-size:clamp(14px,3.2vw,30px);line-height:1.35;letter-spacing:.04em;
+  color:#fffbe8;text-shadow:3px 3px 0 #26324a,-1px -1px 0 #26324a,1px -1px 0 #26324a,-1px 1px 0 #26324a}
+.sub{position:absolute;left:16px;top:calc(14px + clamp(14px,3.2vw,30px)*1.7);margin:0;font-size:clamp(8px,1.2vw,11px);color:#26324a;pointer-events:none;line-height:1.7}
+.home{position:absolute;left:10px;bottom:10px;font:inherit;font-size:clamp(8px,1.2vw,10px);color:#3a2a1a;background:#d9b77a;
+  border:3px solid #5a3f28;box-shadow:0 3px 0 #3a2a1a;padding:7px 9px;text-decoration:none;line-height:1}
+.home:active{transform:translateY(2px);box-shadow:0 1px 0 #3a2a1a}
+.caption{margin:0;font-size:10px;line-height:1.9;color:var(--muted);text-align:center;text-wrap:balance}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../../">← Back to the windmill</a>
+  <div class="screen" id="screen">
+    <canvas id="c" aria-label="An 8-bit scene of Caesar's Well and Queensmere on Wimbledon Common, where Ben and Jack wander about talking in Shakespeare quotes"></canvas>
+    <h1 class="title">Ben's World</h1>
+    <p class="sub">Caesar's Well &amp; Queensmere</p>
+    <a class="home" href="../../">← Windmill</a>
+  </div>
+  <p class="caption">Tap Ben or Jack for a line. Tap the well to make a wish, or the ducks for a quack.</p>
+</div>
+
+<script>
+(function(){
+const screen=document.getElementById('screen');
+const cv=document.getElementById('c');
+const ctx=cv.getContext('2d');
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- sprites (same as the homepage) ---------- */
+const BODY={
+ jack:["...KKKKKK...","..KHHHHhHK..",".KHHhHHHHHK.",".KSSSSSSSSK.",".KKKKSSKKKK.",".KKWKSSKWKK.",".KSSSSSSSSK.",".KSSSWWSSSK.","..KKSSSSKK..",".KTTLTTLTTK.","KTTTLTTLTTTK","KSTTTLLTTTSK","KSKTTTTTTKSK"],
+ ben:["..KKKKKKKK..",".KHHHHHHHHK.","KHHhHHHhHHHK","KHHHHhHHHHHK",".KHSHHSSHSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSBBBBBBSK.",".KSSWWWWSSK.","..KKSBBSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSKTTTTTTKSK"]
+};
+const LEGS=[["..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."],["..KPPPPPPK..",".KPPK.KPPK..",".KPPK..KPPK.",".KOOK..KOOK."]];
+const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
+const BEN={id:'B',name:'Ben',rows:BODY.ben,pal:{...base,H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'}};
+const JACK={id:'J',name:'Jack',rows:BODY.jack,pal:{...base,H:'#9a9a9a',h:'#6b6b6b',S:'#f2c4a0',T:'#bcd4ee',L:'#1f8a42',P:'#2b3550'}};
+
+/* ---------- the script ---------- */
+// B = Ben, J = Jack. Mostly Shakespeare, lightly bent to fit the Common.
+const CONVOS=[
+ [['B','To read, or not to read: that is the question.'],['J','Whether \'tis nobler to finish the book or watch the film.']],
+ [['J','Is this a duck which I see before me?'],['B','Come, let me clutch thee.'],['J','It\'s gone in the pond, Ben.']],
+ [['B','Friends, Romans, commoners, lend me your ears.'],['J','The Romans never came here, Ben.'],['B','Then I come to bury Caesar\'s Well, not to praise it.']],
+ [['J','Now is the winter of our discontent.'],['B','Made glorious summer by this sun of SW19.']],
+ [['B','All the world\'s a stage.'],['J','And all the men and women merely dog walkers.']],
+ [['J','Once more unto the Thames, dear friends!'],['B','Ellie\'s already halfway there.']],
+ [['B','A penalty! A penalty! My kingdom for a penalty!'],['J','Matt\'s on it. Mind the ducks.']],
+ [['J','Milo, Milo! Wherefore art thou Milo?'],['B','Rolling in something, I fear.']],
+ [['B','Double, double, toil and trouble.'],['J','Kettle boil and crumpet bubble.'],['B','Lauren\'s shop is open, then.']],
+ [['J','If music be the food of love, play on.'],['B','Tap the windmill, then.']],
+ [['B','We few, we happy few, we band of brothers.'],['J','We Wimbledon Massive.']],
+ [['J','What\'s in a name?'],['B','That which we call a pond by any other name would be Queensmere.']],
+ [['B','Brevity is the soul of wit.'],['J','...']],
+ [['B','The fool doth think he is wise.'],['J','Thank you, Ben.'],['B','...but the wise man knows himself to be a fool.'],['J','Thank you, Ben.']],
+ [['J','Cry havoc, and let slip the dogs of war!'],['B','Milo\'s having a nap.']],
+ [['B','Shall I compare thee to a summer\'s day?'],['J','It\'s October, Ben.']],
+ [['J','We\'ll teach you to drink deep ere you depart.'],['B','Not from the well, Jack.']],
+ [['B','Something is rotten in the state of Denmark.'],['J','It\'s the pond.']],
+ [['J','The lady doth protest too much, methinks.'],['B','The duck doth quack too much, methinks.']],
+ [['B','How many chapters left?'],['J','Parting is such sweet sorrow.'],['B','That\'s not an answer.']],
+ [['J','Uneasy lies the head that wears a crown.'],['B','Uneasy lies the man who sits on the wet bench.']],
+ [['B','Our revels now are ended.'],['J','Pub?'],['B','Pub.']]
+];
+const SOLO={
+ B:['To be, or not to be.','The rest is silence.','O brave new world!','What light through yonder windmill breaks?','Is it book club yet?','I am fortune\'s fool.','Lord, what fools these mortals be!','Good night, sweet ducks.'],
+ J:['Hello Ben!','Alas, poor Yorick!','The game\'s afoot!','Out, damned spot!','Lay on, Macduff!','A horse! A horse!','Neither a borrower nor a lender be.','Is it pub o\'clock?']
+};
+const BEAR_CONVO=[['B','Hark. What is that?'],['J','Is that a... bear?'],['B','It is.'],['J','Run!']];
+const WISHES=['Wish granted: one (1) lie-in.','Wish granted: the kettle is already on.','Wish granted: a dry Thames Path.','Wish granted: Milo found a stick.','Wish granted: the next round is on Ben.','Wish granted: a page-turner for book club.','The well says: ask again after tea.','Wish granted. Probably.'];
+const QUACKS=['Quack.','Quack quack.','To quack, or not to quack.','Et tu, Ben?','QUACK.'];
+
+/* ---------- helpers ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rand(a,b){return a+Math.random()*(b-a)}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+let u=1,LW=0,LH=0,W=0,H=0,horizon=0,skyLayer,landLayer,clouds=[];
+let pond={},well={},stripY0=0;
+function px(c,x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.floor(x*u),Math.floor(y*u),Math.ceil(w*u),Math.ceil(h*u))}
+function makeLayer(){const c=document.createElement('canvas');c.width=W;c.height=H;return c}
+function inPond(x,y,m=0){const dx=(x-pond.cx)/(pond.rx+m),dy=(y-pond.cy)/(pond.ry+m*0.6);return dx*dx+dy*dy<1}
+
+const month=new Date().getMonth()+1;
+const autumn=month>=9&&month<=11;
+const FAR=autumn?[['#a5642c','#c97d33','#e0a24a'],['#4a7f55','#5f9466','#76a97a']]:[['#4a7f55','#5f9466','#76a97a']];
+const NEAR=autumn?[['#7a3f1d','#a8532a','#c96e2e'],['#7d6a1c','#a8902a','#cdb23e'],['#24552d','#2f6b3a','#3f8248']]:[['#24552d','#2f6b3a','#3f8248']];
+const SKY=['#5aa3e6','#68afeb','#78bcf0','#8bc9f3','#a2d6f5','#bce3f6'];
+const GRASS=autumn?['#79a846','#68953b','#92bb57']:['#62b04c','#529c40','#7cc65d'];
+
+/* ---------- static layers ---------- */
+function buildLayers(){
+  const r=rng(23);
+  skyLayer=makeLayer();const s=skyLayer.getContext('2d');
+  const bh=Math.ceil(horizon/SKY.length);SKY.forEach((c,i)=>px(s,0,i*bh,LW,bh+1,c));
+
+  landLayer=makeLayer();const g=landLayer.getContext('2d');
+  function tree(cx,cy,rad,pal){
+    const [dark,mid,light]=pal;px(g,cx,cy,1,horizon-cy,'#5a3f28');
+    for(let dy=-rad;dy<=rad;dy++)for(let dx=-rad;dx<=rad;dx++){
+      if(dx*dx+dy*dy>rad*rad+(r()-0.5)*rad*1.6)continue;
+      let col=mid;if(dx+dy<-rad*0.5)col=light;else if(dx+dy>rad*0.6)col=dark;if(r()<0.06)col=dark;
+      px(g,cx+dx,cy+dy,1,1,col);
+    }
+  }
+  for(let x=-4;x<LW+8;x+=7+Math.floor(r()*5)){const rad=7+Math.floor(r()*4);tree(x,horizon-6-Math.floor(rad*0.6),rad,FAR[Math.floor(r()*FAR.length)])}
+  for(let x=-2;x<LW+8;x+=6+Math.floor(r()*5)){const rad=4+Math.floor(r()*3);tree(x,horizon-2-Math.floor(rad*0.5),rad,NEAR[Math.floor(r()*NEAR.length)])}
+  // grass
+  px(g,0,horizon,LW,LH-horizon,GRASS[0]);
+  for(let y=horizon;y<LH;y+=4)for(let x=(y/4%2)*3;x<LW;x+=6){if(r()<0.5)px(g,x,y,1,2,GRASS[1])}
+  for(let i=0;i<LW*LH*0.012;i++)px(g,Math.floor(r()*LW),horizon+2+Math.floor(r()*(LH-horizon)),1,1,GRASS[2]);
+  // a worn path along the bottom
+  for(let x=0;x<LW;x++){
+    const y=Math.round(stripY0+(LH-stripY0)*0.45+Math.sin(x*0.05)*2);
+    px(g,x,y-2,1,5,'#cfae74');px(g,x,y-3,1,1,'#a8854f');px(g,x,y+3,1,1,'#a8854f');if(r()<0.4)px(g,x,y-2+Math.floor(r()*5),1,1,'#bb9a62');
+  }
+  // Queensmere
+  const {cx,cy,rx,ry}=pond;
+  for(let y=Math.floor(cy-ry-1);y<=cy+ry+1;y++)for(let x=Math.floor(cx-rx-1);x<=cx+rx+1;x++){
+    const dx=(x-cx)/rx,dy=(y-cy)/ry,d=dx*dx+dy*dy;
+    if(d<1){
+      const t=(y-(cy-ry))/(2*ry);
+      let col=t<0.3?'#3a6f98':t<0.65?'#4682b0':'#5593c0';
+      if(d>0.82)col='#2f5e80';
+      if(r()<0.04)col='#6aa6cf';
+      px(g,x,y,1,1,col);
+    }else if(d<1.18)px(g,x,y,1,1,r()<0.5?'#6b5a3a':'#7d6a46');
+  }
+  // tree reflections along the top edge
+  for(let x=Math.floor(cx-rx*0.8);x<cx+rx*0.8;x++){if(r()<0.6){const top=cy-ry*Math.sqrt(Math.max(0,1-((x-cx)/rx)**2));px(g,x,top+1,1,1+Math.floor(r()*3),'#2f5e5a')}}
+  // lily pads
+  for(let i=0;i<Math.max(4,rx/5);i++){
+    let x,y,t=0;do{x=cx+(r()*2-1)*rx;y=cy+(r()*2-1)*ry;t++}while(!(inPond(x,y,-4))&&t<30);
+    px(g,x,y,3,1,'#4f8a3a');px(g,x+1,y-1,1,1,'#4f8a3a');if(r()<0.4)px(g,x+1,y-1,1,1,'#f2a0c0');
+  }
+  // reeds and bulrushes round the edge
+  for(let i=0;i<Math.round(rx*1.3);i++){
+    const a=r()*Math.PI*2,x=Math.round(cx+Math.cos(a)*rx*1.04),y=Math.round(cy+Math.sin(a)*ry*1.08);
+    if(Math.sin(a)<-0.2&&r()<0.6)continue;
+    const h=2+Math.floor(r()*3);px(g,x,y-h,1,h,'#3d6b2c');if(r()<0.35)px(g,x,y-h-1,1,2,'#7a5230');
+  }
+  // Caesar's Well: granite blocks round a little spring, with a standpipe at the back
+  const wx=well.x,wy=well.y;
+  px(g,wx+5,wy-8,1,6,'#5a6070');px(g,wx+3,wy-8,3,1,'#5a6070');px(g,wx+3,wy-7,1,1,'#3e4450');
+  for(let y=-4;y<=4;y++)for(let x=-10;x<=10;x++){
+    const d=(x/10)**2+(y/4.2)**2;
+    if(d<0.42)px(g,wx+x,wy+y,1,1,d<0.18&&x<0?'#3f6f86':'#2a4a5a');
+    else if(d<1){const blk=Math.floor((Math.atan2(y*2.4,x)+Math.PI)/(Math.PI*2)*12);px(g,wx+x,wy+y,1,1,(blk%2?'#a6a6a0':'#8c8c86'))}
+  }
+  for(let x=-9;x<=9;x++){const y=Math.round(4.2*Math.sqrt(Math.max(0,1-(x/10)**2)));px(g,wx+x,wy+y+1,1,1,'#6e6e6a')}
+  for(let i=0;i<8;i++)px(g,wx-10+Math.floor(r()*20),wy-4+Math.floor(r()*9),1,1,'#6f8a4a');
+  // little sign beside the well
+  const sx=wx+14,sy=wy-1;
+  px(g,sx+4,sy-3,1,7,'#5a3f28');px(g,sx,sy-9,10,6,'#5a3f28');px(g,sx+1,sy-8,8,4,'#d9b77a');
+  px(g,sx+2,sy-7,6,1,'#7a5a3a');px(g,sx+2,sy-5,4,1,'#7a5a3a');
+  // a bench by the pond
+  const bx=Math.round(cx+rx+10),by=Math.round(cy-ry*0.2);
+  if(bx+12<LW){px(g,bx,by,12,1,'#7a5232');px(g,bx,by-3,12,1,'#7a5232');px(g,bx,by-2,1,2,'#5a3a20');px(g,bx+11,by-2,1,2,'#5a3a20');px(g,bx+1,by+1,1,3,'#3a2a1a');px(g,bx+10,by+1,1,3,'#3a2a1a')}
+}
+
+/* ---------- moving bits ---------- */
+let ducks=[],ripples=[],leaves=[],coin=null,sparkles=[],notes=[];
+function initFx(){
+  ducks=Array.from({length:3},(_,i)=>({x:pond.cx+(i-1)*pond.rx*0.4,y:pond.cy+(i%2?2:-2),tx:0,ty:0,wait:rand(0,2),flip:i%2===0,bob:Math.random()*6,say:null,sayT:0}));
+  leaves=autumn?Array.from({length:14},(_,i)=>({x:Math.random()*LW,y:Math.random()*LH,vy:rand(5,9),ph:Math.random()*6,col:['#d9752b','#c2491f','#e8a53a'][i%3]})):[];
+}
+function duckTarget(d){for(let t=0;t<20;t++){const x=pond.cx+(Math.random()*2-1)*pond.rx,y=pond.cy+(Math.random()*2-1)*pond.ry;if(inPond(x,y,-6)){d.tx=x;d.ty=y;return}}d.tx=pond.cx;d.ty=pond.cy}
+function drawDuck(d){
+  const x=Math.round(d.x),y=Math.round(d.y+Math.sin(d.bob)*0.4);
+  const rows=['....GG.','....GGY','WBBBBB.'],pal={G:'#2f7d4a',Y:'#e8a33a',B:'#8a7a66',W:'#f2f2ee'};
+  rows.forEach((row,j)=>{for(let i=0;i<7;i++){const c=pal[row[i]];if(!c)continue;px(ctx,x-3+(d.flip?6-i:i),y-3+j,1,1,c)}});
+  px(ctx,x-4,y,9,1,'#7ab4d8');
+}
+
+/* ---------- people ---------- */
+let people=[],convo=null,deck=[],convoCount=0,cool=3,bear=null,soloT=8;
+function walkOK(x,y){return x>6&&x<LW-6&&y>horizon+8&&y<LH-4&&!inPond(x,y,6)&&Math.hypot((x-well.x)/1.6,y-well.y)>9}
+function pathOK(x0,y0,x1,y1){for(let i=1;i<=12;i++){const t=i/12;if(inPond(x0+(x1-x0)*t,y0+(y1-y0)*t,5))return false}return true}
+function newTarget(p){
+  const o=people.find(q=>q!==p);
+  for(let t=0;t<25;t++){
+    let x,y;
+    if(o&&o.state!=='gone'&&Math.random()<0.45){x=o.x+(Math.random()<.5?-16:16);y=o.y+rand(-3,3)}
+    else{x=rand(8,LW-8);y=rand(horizon+10,LH-6)}
+    if(walkOK(x,y)&&pathOK(p.x,p.y,x,y)){p.tx=x;p.ty=y;p.state='walk';return}
+  }
+  p.state='idle';p.wait=1;
+}
+function enter(delay){
+  people.forEach((p,i)=>{
+    p.x=-10-i*14;p.y=rand(stripY0+4,LH-8);p.state='enter';p.flip=false;p.say=null;p.sayT=0;
+    p.tx=LW*(0.18+i*0.1);p.ty=p.y;p.delay=delay+i*0.6;
+  });
+}
+function spawn(){
+  people=[BEN,JACK].map(c=>({...c,x:0,y:0,tx:0,ty:0,state:'enter',wait:0,flip:false,anim:0,say:null,sayT:0,delay:0}));
+  enter(0.4);
+  people[1].onArrive=()=>sayLine(people[1],'Hello Ben!',2.2);
+  people[0].onArrive=()=>sayLine(people[0],'Thus far into the bowels of the Common...',3.2);
+}
+function sayLine(p,text,t){p.say=text;p.sayT=t||(1.6+text.length*0.05)}
+function startConvo(lines){
+  const [b,j]=people;
+  if(lines===BEAR_CONVO)bear={x:-6,y:Math.round((stripY0+LH)/2),anim:0,phase:'peek',t:0};
+  b.state=j.state='talk';b.flip=j.x<b.x;j.flip=b.x<j.x;b.say=j.say=null;
+  convo={lines,i:-1,t:0,dur:0};nextLine();
+}
+function nextLine(){
+  convo.i++;const [b,j]=people;b.say=j.say=null;
+  if(convo.i>=convo.lines.length){
+    const wasBear=convo.lines===BEAR_CONVO;convo=null;convoCount++;cool=rand(5,9);
+    if(wasBear){startBear();return}
+    people.forEach(p=>{p.state='idle';p.wait=rand(0.6,2)});return;
+  }
+  const [who,text]=convo.lines[convo.i];
+  const p=who==='B'?b:j;p.say=text;convo.t=0;convo.dur=1.5+text.length*0.055;
+}
+function startBear(){
+  bear.phase='chase';bear.t=0;
+  people.forEach(p=>{p.state='flee';p.stage=1;p.tx=p.x;p.ty=rand(stripY0+4,LH-8);p.say=null});
+  sayLine(people[0],'Exit, pursued by a bear!',2.4);
+}
+
+function update(dt){
+  if(!reduced)clouds.forEach(c=>{c.x+=c.s*dt;if(c.x>LW+4)c.x=-c.w-4});
+  leaves.forEach(l=>{l.y+=l.vy*dt;l.ph+=dt*1.5;if(l.y>LH){l.y=-2;l.x=Math.random()*LW}});
+  // ducks
+  ducks.forEach(d=>{
+    d.bob+=dt*3;if(d.sayT>0){d.sayT-=dt;if(d.sayT<=0)d.say=null}
+    if(d.wait>0){d.wait-=dt;if(d.wait<=0)duckTarget(d);return}
+    const dx=d.tx-d.x,dy=d.ty-d.y,dist=Math.hypot(dx,dy);
+    if(dist<0.6){d.wait=rand(1,4);return}
+    d.x+=dx/dist*4*dt;d.y+=dy/dist*4*dt;d.flip=dx<0;
+  });
+  ripples.forEach(r=>r.r+=dt*8);ripples=ripples.filter(r=>r.r<r.max);
+  sparkles.forEach(s=>s.t-=dt);sparkles=sparkles.filter(s=>s.t>0);
+  notes.forEach(n=>{n.t-=dt});notes=notes.filter(n=>n.t>0);
+  if(coin){coin.t+=dt;if(coin.t>=0.7){for(let i=0;i<8;i++)sparkles.push({x:well.x+rand(-6,6),y:well.y+rand(-3,2),t:rand(0.4,1.2)});notes.push({x:well.x,y:well.y-10,text:pick(WISHES),t:3.4});coin=null}}
+
+  // the bear
+  if(bear){
+    bear.anim+=dt;bear.t+=dt;
+    if(bear.phase==='peek'){}
+    else if(bear.phase==='chase'){
+      if(bear.t>1.2)bear.x+=34*dt;
+      if(bear.x>LW+18&&people.every(p=>p.state==='gone')){bear.phase='pause';bear.t=0}
+    }else if(bear.t>2.5){
+      bear=null;enter(0);
+      people[1].onArrive=()=>sayLine(people[1],'Where were we?',2.2);
+      people[0].onArrive=()=>sayLine(people[0],'Act two, I think.',2.4);
+    }
+  }
+
+  people.forEach(p=>{
+    if(p.sayT>0&&!convo){p.sayT-=dt;if(p.sayT<=0)p.say=null}
+    if(p.state==='talk'||p.state==='gone')return;
+    if(p.state==='enter'&&p.delay>0){p.delay-=dt;return}
+    if(p.state==='idle'){p.wait-=dt;if(p.wait<=0)newTarget(p);return}
+    const sp=p.state==='flee'?(bear&&bear.t>0.9?40:0):(reduced?8:14);
+    const dx=p.tx-p.x,dy=p.ty-p.y,d=Math.hypot(dx,dy);
+    if(d<1){
+      if(p.state==='flee'&&p.stage===1){p.stage=2;p.tx=LW+16;return}
+      if(p.state==='flee'){p.state='gone';return}
+      const arr=p.state==='enter'&&p.onArrive;p.state='idle';p.wait=rand(1,3);
+      if(arr){p.onArrive=null;arr()}
+      return;
+    }
+    p.x+=dx/d*sp*dt;p.y+=dy/d*sp*dt;if(Math.abs(dx)>0.2)p.flip=dx<0;p.anim+=dt*(sp>20?2:1);
+  });
+
+  if(convo){convo.t+=dt;if(convo.t>=convo.dur)nextLine();return}
+  if(bear)return;
+  cool-=dt;
+  const [b,j]=people;
+  if(cool<=0&&['idle','walk'].includes(b.state)&&['idle','walk'].includes(j.state)&&!b.say&&!j.say&&Math.hypot(b.x-j.x,(b.y-j.y)*1.6)<26){
+    if(convoCount>=4&&convoCount%5===4)startConvo(BEAR_CONVO);
+    else{if(!deck.length)deck=shuffle(CONVOS);startConvo(deck.pop())}
+  }
+}
+
+/* ---------- drawing ---------- */
+function drawCloud(c){px(ctx,c.x+3,c.y-3,c.w-8,3,'#ffffff');px(ctx,c.x+c.w*0.45,c.y-5,c.w*0.3,2,'#ffffff');px(ctx,c.x,c.y,c.w,4,'#ffffff');px(ctx,c.x+1,c.y+4,c.w-2,1,'#d6ecf8')}
+function drawPerson(p){
+  if(p.state==='gone'||p.x<-14||p.x>LW+14)return;
+  const x=Math.round(p.x),y=Math.round(p.y),left=x-6,top=y-17;
+  ctx.globalAlpha=0.25;px(ctx,x-5,y,10,1,'#000');px(ctx,x-4,y+1,8,1,'#000');ctx.globalAlpha=1;
+  const moving=['walk','enter','flee'].includes(p.state)&&!(p.state==='enter'&&p.delay>0);
+  const frame=moving&&Math.floor(p.anim*6)%2===1?1:0;
+  p.rows.concat(LEGS[frame]).forEach((row,j)=>{for(let i=0;i<12;i++){const col=p.pal[row[i]];if(!col)continue;px(ctx,left+(p.flip?11-i:i),top+j,1,1,col)}});
+}
+const BEAR=["........bb...",".......bbbb..","..BBBBBBbKbb.",".BBBBBBBBbbbN","BBBBBBBBBBBb.",".BBBBBBBBBB.."];
+const BEAR_LEGS=[".BB..BB.BB...","BB..BB..BB.B."];
+function drawBear(){
+  if(!bear||bear.phase==='pause')return;
+  const x=Math.round(bear.x),y=Math.round(bear.y),still=bear.phase==='peek',pal={B:'#6b4426',b:'#7d5230',K:'#151515',N:'#151515'};
+  ctx.globalAlpha=0.25;px(ctx,x-6,y,13,1,'#000');ctx.globalAlpha=1;
+  BEAR.concat([BEAR_LEGS[still?0:Math.floor(bear.anim*8)%2]]).forEach((row,j)=>{for(let i=0;i<13;i++){const c=pal[row[i]];if(c)px(ctx,x-6+i,y-7+j,1,1,c)}});
+}
+function drawTag(text,x,y,small){
+  const fs=Math.max(small?6:7,(small?2.2:2.6)*u);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillStyle='#1d3320';ctx.fillText(text,x*u+Math.max(1,u*0.4),y*u+Math.max(1,u*0.4));
+  ctx.fillStyle='#fffbe8';ctx.fillText(text,x*u,y*u);
+}
+function wrapLines(text,maxW){
+  const words=text.split(' '),lines=[];let line='';
+  words.forEach(w=>{const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){lines.push(line);line=w}else line=t});
+  if(line)lines.push(line);return lines;
+}
+function drawBubble(text,ax,ay,dark){
+  const fs=Math.max(8,2.9*u);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textAlign='left';ctx.textBaseline='top';
+  const pad=fs*0.6,bd=Math.max(2,Math.round(u*0.5)),lh=fs*1.45;
+  const lines=wrapLines(text,Math.min(W*0.62,fs*20));
+  const tw=Math.max(...lines.map(l=>ctx.measureText(l).width)),bw=tw+pad*2,bh=lines.length*lh-(lh-fs)+pad*2,tail=fs*0.6;
+  const cx=ax*u;let by=ay*u-bh-tail;by=Math.max(4,by);
+  const bx=Math.max(4,Math.min(W-bw-4,cx-bw/2));
+  const fill=dark?'#fff3c4':'#ffffff';
+  ctx.fillStyle='#26324a';ctx.fillRect(bx-bd,by-bd,bw+bd*2,bh+bd*2);
+  ctx.fillStyle=fill;ctx.fillRect(bx,by,bw,bh);
+  const t=Math.max(bd*2,tail*0.8);
+  ctx.fillStyle='#26324a';ctx.fillRect(cx-t/2-bd,by+bh,t+bd*2,tail*0.5+bd);ctx.fillRect(cx-t/4-bd,by+bh+tail*0.5,t/2+bd*2,tail*0.5+bd);
+  ctx.fillStyle=fill;ctx.fillRect(cx-t/2,by+bh-bd,t,tail*0.5+bd);ctx.fillRect(cx-t/4,by+bh+tail*0.5-bd,t/2,tail*0.5);
+  ctx.fillStyle='#222222';lines.forEach((l,i)=>ctx.fillText(l,bx+pad,by+pad+1+i*lh));
+}
+function render(){
+  ctx.drawImage(skyLayer,0,0);
+  clouds.forEach(drawCloud);
+  ctx.drawImage(landLayer,0,0);
+  // water shimmer
+  const tm=performance.now()/1000;
+  for(let i=0;i<10;i++){const a=i*2.4+Math.floor(tm*1.5+i)*0.7,x=pond.cx+Math.cos(a*1.7)*pond.rx*0.7,y=pond.cy+Math.sin(a)*pond.ry*0.6;if(inPond(x,y,-3))px(ctx,x,y,2,1,'#8cc4e6')}
+  if(Math.floor(tm*2)%2)px(ctx,well.x-3,well.y-1,2,1,'#7fb8d6');else px(ctx,well.x+1,well.y,2,1,'#7fb8d6');
+  ripples.forEach(r=>{for(let k=0;k<16;k++){const a=k/16*Math.PI*2,x=r.x+Math.cos(a)*r.r,y=r.y+Math.sin(a)*r.r*0.45;if(inPond(x,y,-1))px(ctx,x,y,1,1,'#a6d4ef')}});
+  ducks.forEach(drawDuck);
+  drawTag('Queensmere',pond.cx,pond.cy+pond.ry+3,true);
+  drawTag("Caesar's Well",well.x,well.y+7,true);
+  const order=[...people].sort((a,b)=>a.y-b.y);
+  order.forEach(drawPerson);
+  drawBear();
+  if(coin){const t=coin.t/0.7,x=coin.x+(well.x-coin.x)*t,y=coin.y+(well.y-coin.y)*t-Math.sin(t*Math.PI)*18;px(ctx,x,y,2,2,'#f6d34a')}
+  sparkles.forEach(s=>px(ctx,s.x,s.y-(1.2-s.t)*4,1,1,'#fffbe8'));
+  leaves.forEach(l=>px(ctx,Math.round(l.x+Math.sin(l.ph)*1.5),Math.round(l.y),1,1,l.col));
+  order.forEach(p=>{if(p.state!=='gone'&&p.x>-8&&p.x<LW+8)drawTag(p.name,p.x,p.y+3)});
+  ducks.forEach(d=>{if(d.say)drawBubble(d.say,d.x,d.y-4)});
+  notes.forEach(n=>drawBubble(n.text,n.x,n.y,true));
+  order.forEach(p=>{if(p.say&&p.state!=='gone')drawBubble(p.say,p.x,p.y-19)});
+}
+
+/* ---------- sizing ---------- */
+function resize(){
+  const cssW=screen.clientWidth,cssH=screen.clientHeight,dpr=window.devicePixelRatio||1;
+  const scale=cssW<520?3:cssW<900?4:5;
+  u=scale*dpr;W=Math.round(cssW*dpr);H=Math.round(cssH*dpr);cv.width=W;cv.height=H;
+  LW=Math.ceil(cssW/scale);LH=Math.ceil(cssH/scale);
+  horizon=Math.round(LH*0.38);
+  const G=LH-horizon;
+  pond={cx:Math.round(LW*(cssW<520?0.62:0.6)),cy:Math.round(horizon+G*0.32),rx:Math.max(24,Math.round(LW*0.2)),ry:Math.max(9,Math.round(G*0.19))};
+  well={x:Math.round(LW*(cssW<520?0.2:0.2)),y:Math.round(horizon+G*0.3)};
+  stripY0=Math.round(pond.cy+pond.ry+12);
+  const r=rng(11);
+  clouds=Array.from({length:Math.max(3,Math.round(LW/45))},()=>({x:r()*LW,y:8+r()*(horizon*0.4),w:14+Math.floor(r()*14),s:1.5+r()*2.5}));
+  buildLayers();initFx();
+  if(!people.length)spawn();
+  else people.forEach(p=>{if(['walk','idle'].includes(p.state)){p.x=Math.min(LW-8,Math.max(8,p.x));if(!walkOK(p.x,p.y))p.y=rand(stripY0,LH-8);p.state='idle';p.wait=0.5}});
+}
+
+/* ---------- taps ---------- */
+function toLogical(e){const rect=cv.getBoundingClientRect(),s=rect.width/LW;return[(e.clientX-rect.left)/s,(e.clientY-rect.top)/s]}
+function hitPerson(lx,ly){return [...people].sort((a,b)=>b.y-a.y).find(p=>p.state!=='gone'&&lx>p.x-8&&lx<p.x+8&&ly>p.y-19&&ly<p.y+4)}
+function hitDuck(lx,ly){return ducks.find(d=>Math.abs(lx-d.x)<6&&ly>d.y-6&&ly<d.y+3)}
+function hitWell(lx,ly){return Math.abs(lx-well.x)<13&&ly>well.y-10&&ly<well.y+7}
+function hitSign(lx,ly){return lx>well.x+12&&lx<well.x+26&&ly>well.y-11&&ly<well.y+4}
+cv.addEventListener('pointermove',e=>{const[x,y]=toLogical(e);cv.classList.toggle('over',!!hitPerson(x,y)||!!hitDuck(x,y)||hitWell(x,y)||hitSign(x,y)||inPond(x,y))});
+cv.addEventListener('click',e=>{
+  const[x,y]=toLogical(e);
+  const p=hitPerson(x,y);
+  if(p){if(convo||bear)return;p.state='idle';p.wait=2.5;sayLine(p,pick(SOLO[p.id]));return}
+  const d=hitDuck(x,y);
+  if(d){d.say=pick(QUACKS);d.sayT=1.8;d.wait=0;duckTarget(d);ripples.push({x:d.x,y:d.y,r:1,max:10});return}
+  if(hitSign(x,y)){notes.push({x:well.x+19,y:well.y-11,text:"Caesar's Well. A natural spring. The granite blocks went in in 1872. The Romans never actually came.",t:5});return}
+  if(hitWell(x,y)){if(coin)return;coin={x:Math.min(LW-10,well.x+30),y:well.y-24,t:0};return}
+  if(inPond(x,y)){ripples.push({x,y,r:1,max:14});return}
+});
+
+let last=performance.now();
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;update(dt);render();requestAnimationFrame(loop)}
+new ResizeObserver(()=>{resize();render()}).observe(screen);
+resize();
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{render();requestAnimationFrame(loop)});
+})();
+</script>
+</body>
+</html>
