@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poppy's Kitchen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{
+  --night:#1f2a44;
+  --tile:#f4efe4;
+  --ink:#24201c;
+  --paper:#fffaf0;
+  --blue:#1d3f8f;
+  --sky:#5b98e6;
+  --green:#3f9a4a;
+  --red:#c2493a;
+  --wood:#8a5a34;
+  --muted:#7a6a5a;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:light;
+}
+html,body{min-height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:18px}
+.back{color:#c5cfe6;font-size:10px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.kitchen{background:var(--tile);border:4px solid #000;box-shadow:6px 6px 0 #000;overflow:hidden}
+.sign{text-align:center;padding:18px 12px 0}
+.sign h1{margin:0;display:inline-block;background:var(--blue);color:#fff;font-weight:400;font-size:clamp(14px,3.6vw,26px);line-height:1.5;padding:12px 18px;border:4px solid #fff;box-shadow:0 0 0 4px var(--ink)}
+.sign p{margin:12px 0 0;font-size:9px;color:var(--muted);line-height:1.8}
+#scene{display:block;width:100%;height:auto;image-rendering:pixelated;margin-top:8px;cursor:pointer}
+.hint{font-size:8px;color:var(--muted);text-align:center;padding:8px 10px 12px;line-height:1.8}
+.box{background:var(--paper);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px;display:grid;gap:12px}
+.box h2{margin:0;font-size:11px;font-weight:400;letter-spacing:.06em}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{font-family:var(--pixel);text-align:left;background:#fff;border:3px solid var(--ink);border-top:12px solid var(--red);padding:12px;display:grid;gap:8px;cursor:pointer;color:var(--ink);min-width:0;
+  background-image:repeating-linear-gradient(#fff 0 17px,#cfe0f4 17px 18px)}
+.card:hover{transform:translateY(-2px)}
+.card:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.card .t{font-size:10px;line-height:1.7}
+.card .b{font-size:8px;color:var(--muted);line-height:1.7}
+.card.empty{border-top-color:#bbb;cursor:default}
+.card.empty:hover{transform:none}
+dialog{max-width:min(560px,calc(100vw - 32px));border:4px solid #000;box-shadow:6px 6px 0 #000;padding:0;background:var(--paper);font-family:var(--pixel);color:var(--ink)}
+dialog::backdrop{background:rgba(20,24,40,.6)}
+.dlg{padding:16px;display:grid;gap:12px;max-height:80vh;overflow:auto}
+.dlg h3{margin:0;font-size:12px;line-height:1.6;font-weight:400;color:var(--blue)}
+.dlg .src{font-size:8px;color:var(--muted);line-height:1.8}
+.dlg h4{margin:4px 0 0;font-size:9px;font-weight:400;color:var(--red)}
+.dlg ul,.dlg ol{margin:0;padding-left:20px;font-size:9px;line-height:2}
+.dlg p{margin:0;font-size:9px;line-height:2}
+.dlg button{justify-self:end;font-family:var(--pixel);font-size:9px;background:var(--blue);color:#fff;border:3px solid #000;padding:8px 12px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&lt; Back to Wimbledon Common</a>
+
+  <section class="kitchen">
+    <div class="sign">
+      <h1>Poppy's Kitchen</h1>
+      <p>Cooking through the cookbooks, one recipe at a time</p>
+    </div>
+    <canvas id="scene" width="240" height="110" aria-label="An 8-bit kitchen: Poppy at the stove stirring a pot, with a shelf of cookbooks behind her"></canvas>
+    <p class="hint">Tap the kitchen to give the pot a stir</p>
+  </section>
+
+  <section class="box">
+    <h2>Favourite recipes</h2>
+    <div class="cards" id="cards"></div>
+  </section>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script>
+/* ---------- recipes ----------
+   Add one block per recipe, e.g.
+   {title:'Recipe name', book:'Cookbook name', page:'123',
+    why:'Why Poppy loves it',
+    ingredients:['...','...'],
+    steps:['...','...']}
+*/
+const RECIPES=[];
+
+const cards=document.getElementById('cards');
+const dlg=document.getElementById('dlg'),body=document.getElementById('dlgBody');
+function esc(t){return String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){
+  cards.innerHTML='';
+  RECIPES.forEach(r=>{
+    const b=document.createElement('button');b.className='card';
+    b.innerHTML=`<span class="t">${esc(r.title)}</span><span class="b">${esc(r.book)}${r.page?', p.'+esc(r.page):''}</span>`;
+    b.onclick=()=>open(r);cards.appendChild(b);
+  });
+  const blanks=Math.max(1,3-RECIPES.length);
+  for(let i=0;i<blanks;i++){
+    const d=document.createElement('div');d.className='card empty';
+    d.innerHTML=`<span class="t">Recipe card coming soon</span><span class="b">Poppy's next favourite goes here</span>`;
+    cards.appendChild(d);
+  }
+}
+function open(r){
+  body.innerHTML=`<h3>${esc(r.title)}</h3>
+  <p class="src">From ${esc(r.book)}${r.page?', page '+esc(r.page):''}</p>
+  ${r.why?`<p>${esc(r.why)}</p>`:''}
+  ${r.ingredients&&r.ingredients.length?`<h4>Ingredients</h4><ul>${r.ingredients.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:''}
+  ${r.steps&&r.steps.length?`<h4>Method</h4><ol>${r.steps.map(i=>`<li>${esc(i)}</li>`).join('')}</ol>`:''}
+  <button type="button">Close</button>`;
+  body.querySelector('button').onclick=()=>dlg.close();
+  dlg.showModal();
+}
+render();
+
+/* ---------- pixel kitchen ---------- */
+const cv=document.getElementById('scene'),ctx=cv.getContext('2d');
+const W=240,H=110;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x|0,y|0,w,h)}
+const POPPY=[
+ "...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.",
+ ".KHSSSSSSHK.",".KHGKGGKGHK.",".KHSSSSSSHK.",".KHSSRRSSHK.",
+ "KHHKSSSSKHHK","KHHTLTTMTHHK","KHTTMTTLTTHK","KSTLTTMTTLSK","KSKTTLTTMKSK",
+ "..KTTLTTMK..","..KTMTTLTK..","..KSSKKSSK..","..KOOKKOOK.."];
+const PAL={K:'#151515',H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#3a3a48',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',O:'#222'};
+const BOOKS=['#c2493a','#3f9a4a','#e0a24a','#1d3f8f','#8a4a8a','#d9752b','#2f7d7a','#b8a07a','#c2493a','#5b98e6','#6a8a3a','#a0522d'];
+let steam=[],stirT=0,stirBoost=0,t=0;
+function scene(){
+  // wall tiles
+  for(let y=0;y<78;y+=6)for(let x=0;x<W;x+=6)px(x,y,6,6,((x+y)/6)%2?'#f4efe4':'#e9e1d0');
+  // window
+  px(170,10,52,34,'#151515');px(172,12,48,30,'#9fd0f2');px(195,12,2,30,'#151515');px(172,26,48,2,'#151515');
+  px(178,30,10,8,'#3f9a4a');px(206,32,8,6,'#3f9a4a'); // pot plants on sill
+  px(168,44,56,3,'#8a5a34');
+  // cookbook shelf
+  px(10,30,80,3,'#5e3b20');
+  let x=12;BOOKS.forEach((c,i)=>{const h=12+(i*5)%6;px(x,30-h,5,h,c);px(x,30-h+3,5,1,'#fff8');x+=6});
+  // counter
+  px(0,78,W,4,'#5e3b20');px(0,82,W,28,'#8a5a34');
+  for(let i=0;i<W;i+=40){px(i+4,86,32,20,'#9a6a40');px(i+18,94,4,2,'#3a2a1a')}
+  // hob and pot
+  px(110,74,50,4,'#333');px(116,72,14,2,'#555');px(140,72,14,2,'#555');
+  px(116,58,30,14,'#151515');px(117,59,28,12,'#9aa4b0');px(114,60,3,3,'#151515');px(145,60,3,3,'#151515');
+  px(118,59,26,2,'#e0a24a');
+  // chopping board with veg
+  px(30,72,40,6,'#c9a067');px(36,68,6,4,'#d9752b');px(46,69,8,3,'#3f9a4a');px(58,67,6,5,'#c2493a');
+}
+function poppy(){
+  const x=96,y=44;
+  POPPY.forEach((row,j)=>{for(let i=0;i<12;i++){const c=PAL[row[i]];if(c)px(x+i*2,y+j*2,2,2,c)}});
+  // spoon arm moving in the pot
+  const a=stirT;
+  const sx=126+Math.round(Math.cos(a)*6),sy=56+Math.round(Math.sin(a)*1);
+  px(sx,sy-10,2,12,'#8a5a34');
+}
+function step(dt){
+  t+=dt;
+  stirT+=dt*(1.6+stirBoost*4);stirBoost=Math.max(0,stirBoost-dt*0.6);
+  if(Math.random()<dt*(1.5+stirBoost*5))steam.push({x:120+Math.random()*22,y:56,l:0});
+  steam.forEach(s=>{s.l+=dt;s.y-=dt*8;s.x+=Math.sin((s.l+s.x)*2)*dt*3});
+  steam=steam.filter(s=>s.l<3);
+}
+function draw(){
+  scene();
+  steam.forEach(s=>{ctx.globalAlpha=Math.max(0,0.7-s.l*0.22);px(s.x,s.y,2,2,'#ffffff')});
+  ctx.globalAlpha=1;
+  poppy();
+}
+let last=performance.now();
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;step(dt);draw();if(!reduced)requestAnimationFrame(loop)}
+if(reduced)draw();else requestAnimationFrame(loop);
+cv.addEventListener('click',()=>{stirBoost=1;if(reduced){step(.3);draw()}});
+</script>
+</body>
+</html>
