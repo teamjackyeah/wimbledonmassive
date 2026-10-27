@@ -51,6 +51,8 @@ canvas.over{cursor:pointer}
 .invite-list{margin:0 auto;padding:0;list-style:none;display:grid;gap:8px;text-align:left;font-size:clamp(9px,1.4vw,11px);line-height:1.8;color:var(--cream)}
 .invite-list li{display:flex;gap:10px;align-items:baseline}
 .invite-list li::before{content:"";flex:none;width:7px;height:7px;background:#f6d34a;transform:translateY(-1px)}
+.wander{position:absolute;left:10px;bottom:10px;font:inherit;font-size:clamp(8px,1.2vw,10px);color:#3a2a1a;background:#d9b77a;border:3px solid #5a3f28;box-shadow:0 3px 0 #3a2a1a;padding:7px 9px;text-decoration:none;line-height:1;opacity:0;pointer-events:none;transition:opacity .6s}
+.wander.show{opacity:1;pointer-events:auto}
 @media (min-width:700px){.title span{display:inline}.sub{top:calc(14px + clamp(14px,3.2vw,30px) * 1.7)}}
 </style>
 
@@ -59,6 +61,7 @@ canvas.over{cursor:pointer}
     <canvas id="c" aria-label="An 8-bit scene of Wimbledon Common with the windmill, where the Wimbledon Massive characters walk around and say hello to each other"></canvas>
     <h1 class="title"><span>Wimbledon</span> <span>Massive</span></h1>
     <p class="sub">Wimbledon Common, SW19</p>
+    <a class="wander" id="wander" href="https://www.wimbledonmassive.com/ben/world/">← Caesar's Well</a>
   </div>
   <p class="caption">Tap someone (or Milo) to visit their page, or tap the windmill for the theme tune</p>
   <div class="invite">
@@ -121,7 +124,7 @@ const CHARS=[
  {name:'Lauren',rows:BODY.lauren,pet:true,pal:{...base,H:'#2a1a14',h:'#43291d',S:'#ecbd9c',T:'#201c33',L:'#f08cb4',M:'#f6c945',P:'#201c33',O:'#c9a24e'}},
  {name:'Matt',rows:BODY.matt,pal:{...base,H:'#5a3f2c',h:'#3f2a1c',S:'#f0c2a2',B:'#b88f74',T:'#2f7d4a',P:'#20263b'}},
  {name:'Ben',rows:BODY.ben,pal:{...base,H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'}},
- {name:'Poppy',rows:BODY.poppy,pal:{...base,H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#3a3a48',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',P:'#1d3f8f',O:'#222222'}}
+ {name:'Poppy',rows:BODY.poppy,pal:{...base,H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#3a3a48',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',P:'#f3c6a8',O:'#222222'}}
 ];
 
 /* ---------- seasons and birthdays ---------- */
@@ -340,9 +343,22 @@ function updateChat(chat,dt){
   }
 }
 
-let checkT=0;
+let checkT=0,benT=40,jackT=rand(90,150);
+const wander=document.getElementById('wander');
+wander.addEventListener('click',e=>{e.preventDefault();go(location.hostname.includes('wimbledonmassive')?'/ben/world/':'https://www.wimbledonmassive.com/ben/world/')});
+function leave(p,line,delay,side){p.state='leave';p.side=side||'left';p.tx=p.side==='left'?-12:LW+12;p.ty=p.y;p.delay=delay||0;p.say=line;p.sayT=line?2:0}
 function update(dt){
   updateFx(dt);
+  const ben=people.find(p=>p.name==='Ben'),jk=people.find(p=>p.name==='Jack');
+  benT-=dt;
+  if(ben&&benT<=0&&!ben.chat&&!ben.away&&ben.state!=='leave'){
+    benT=1e9;leave(ben,'Exit, stage left.');
+  }
+  jackT-=dt;
+  if(jk&&jackT<=0&&!jk.chat&&!jk.away&&jk.state!=='leave'){
+    jackT=1e9;leave(jk,null,0,Math.random()<0.5?'left':'right');
+  }
+  if(ben)wander.classList.toggle('show',!!ben.away||(ben.state==='leave'&&ben.x<24));
   if(!reduced){
     sailA+=dt*0.35;
     clouds.forEach(c=>{c.x+=c.s*dt;if(c.x>LW+4)c.x=-c.w-4});
@@ -352,6 +368,13 @@ function update(dt){
   people.forEach(p=>{
     if(p.chat){chats.add(p.chat);return}
     if(p.sayT>0){p.sayT-=dt;if(p.sayT<=0)p.say=null;}
+    if(p.away){p.awayT-=dt;if(p.awayT<=0){p.away=false;const fromL=p.side!=='right';p.x=fromL?-8:LW+8;const b=walkBox();p.y=Math.min(b.y1,Math.max(b.y0,p.y));p.state='walk';p.tx=fromL?rand(20,LW*0.4):rand(LW*0.6,LW-20);p.ty=p.y;if(p.name==='Ben')benT=rand(70,120);if(p.name==='Jack')jackT=rand(100,160)}return}
+    if(p.state==='leave'){
+      if(p.delay>0){p.delay-=dt;return}
+      const dx=p.tx-p.x,dy=p.ty-p.y,d=Math.hypot(dx,dy);
+      if(d<1){p.away=true;p.state='idle';p.say=null;p.awayT=p.name==='Ben'?28:rand(12,25);return}
+      p.x+=dx/d*speed*dt;p.y+=dy/d*speed*dt;p.flip=dx<0;p.anim+=dt;return;
+    }
     if(p.state==='idle'){p.wait-=dt;if(p.wait<=0)newTarget(p)}
     else if(p.state==='walk'){
       const dx=p.tx-p.x,dy=p.ty-p.y,d=Math.hypot(dx,dy);
@@ -365,7 +388,7 @@ function update(dt){
     checkT=0.3;const now=performance.now();
     for(let i=0;i<people.length;i++)for(let j=i+1;j<people.length;j++){
       const a=people[i],b=people[j];
-      if(a.chat||b.chat||a.sayT>0||b.sayT>0)continue;
+      if(a.chat||b.chat||a.sayT>0||b.sayT>0||a.away||b.away||a.state==='leave'||b.state==='leave')continue;
       if(!a.name&&!b.name&&Math.random()<0.6)continue;
       const key=a.name+b.name+i+'-'+j;
       if((cooldown.get(key)||0)>now)continue;
@@ -387,7 +410,7 @@ function drawPerson(p){
   const x=Math.round(p.x),y=Math.round(p.y),left=x-6,top=y-17;
   if(p.pet)drawMilo(p);
   ctx.globalAlpha=0.25;px(ctx,x-5,y,10,1,'#000');px(ctx,x-4,y+1,8,1,'#000');ctx.globalAlpha=1;
-  const frame=p.state==='walk'&&Math.floor(p.anim*6)%2===1?1:0;
+  const frame=(p.state==='walk'||p.state==='leave')&&Math.floor(p.anim*6)%2===1?1:0;
   const rows=p.rows.concat(LEGS[frame]);
   rows.forEach((row,j)=>{for(let i=0;i<12;i++){const ch=row[i];const col=p.pal[ch];if(!col)continue;const ix=p.flip?11-i:i;px(ctx,left+ix,top+j,1,1,col)}});
   if(!bday.length)return;
@@ -427,7 +450,7 @@ function render(){
   drawSanta();
   ctx.drawImage(landLayer,0,0);
   drawMill();
-  const order=[...people].sort((a,b)=>a.y-b.y);
+  const order=people.filter(p=>!p.away).sort((a,b)=>a.y-b.y);
   order.forEach(drawPerson);
   drawParts();
   order.forEach(drawTag);
@@ -448,7 +471,7 @@ function resize(){
   buildLayers();
   initFx();
   if(!people.length)spawn();
-  else{const b=walkBox();people.forEach(p=>{p.x=Math.min(b.x1,Math.max(b.x0,p.x));p.y=Math.min(b.y1,Math.max(b.y0,p.y));if(p.state==='walk')newTarget(p)})}
+  else{const b=walkBox();people.forEach(p=>{if(p.away||p.state==='leave')return;p.x=Math.min(b.x1,Math.max(b.x0,p.x));p.y=Math.min(b.y1,Math.max(b.y0,p.y));if(p.state==='walk')newTarget(p)})}
 }
 
 /* ---------- tap a person to visit their page ---------- */
@@ -461,7 +484,7 @@ function go(url){
 function hitTest(e){
   const rect=cv.getBoundingClientRect(),scale=rect.width/LW;
   const lx=(e.clientX-rect.left)/scale,ly=(e.clientY-rect.top)/scale;
-  return [...people].sort((a,b)=>b.y-a.y).find(p=>lx>p.x-8&&lx<p.x+8&&ly>p.y-19&&ly<p.y+4);
+  return people.filter(p=>!p.away).sort((a,b)=>b.y-a.y).find(p=>lx>p.x-8&&lx<p.x+8&&ly>p.y-19&&ly<p.y+4);
 }
 function onMill(e){
   const rect=cv.getBoundingClientRect(),scale=rect.width/LW;
@@ -481,7 +504,7 @@ cv.addEventListener('click',e=>{
   if(!hit){if(onMill(e))go(location.hostname.includes('wimbledonmassive')?'/theme/':'https://www.wimbledonmassive.com/theme/');return}
   const url=pageFor(hit);
   if(hit.chat){hit.chat.a.say=hit.chat.b.say=null;const c=hit.chat;c.a.chat=c.b.chat=null;c.a.state=c.b.state='idle';c.a.wait=c.b.wait=1}
-  hit.state='idle';hit.wait=2;hit.say=hit.name?`Hi, I'm ${hit.name}!`:'Hi!';hit.sayT=2;
+  if(hit.state!=='leave'){hit.state='idle';hit.wait=2}hit.say=hit.name?`Hi, I'm ${hit.name}!`:'Hi!';hit.sayT=2;
   if(url)go(url);
 });
 
