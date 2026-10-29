@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Superpower Race</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: pick 2 to 4 racers, then a winding 30-square path across Wimbledon Common to the windmill. One shared ROLL button, a turn banner and a short log of what each superpower did. Pass-and-play. Single pixel-Common look. */
+:root{
+  --ground:#24452a;
+  --frame:#162418;
+  --cream:#f4ecd2;
+  --muted:#b9c9a8;
+  --card:#2f5a36;
+  --gold:#f6d34a;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{margin:0;background:var(--ground);color:var(--cream);font-family:var(--pixel);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:14px 32px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:14px}
+.back{color:var(--muted);font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--cream)}
+h1{margin:0;font-weight:400;font-size:clamp(14px,3.6vw,26px);text-align:center;line-height:1.5;text-shadow:3px 3px 0 #000}
+.sub{margin:0;text-align:center;font-size:9px;color:var(--muted);line-height:1.8}
+[hidden]{display:none!important}
+
+/* setup */
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.pick{font-family:var(--pixel);text-align:left;display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:10px;
+  background:var(--card);color:var(--cream);border:3px solid var(--frame);cursor:pointer;min-width:0}
+.pick canvas{width:48px;height:68px;image-rendering:pixelated}
+.pick b{display:block;font-weight:400;font-size:10px;margin-bottom:6px}
+.pick span{display:block;font-size:8px;line-height:1.7;color:var(--muted)}
+.pick .pw{color:var(--gold)}
+.pick[aria-pressed="true"]{border-color:var(--gold);background:#3a6a40}
+.pick:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.go{justify-self:center;font-family:var(--pixel);font-size:13px;background:var(--gold);color:#1a1405;border:4px solid #000;box-shadow:5px 5px 0 #000;padding:14px 18px;cursor:pointer}
+.go:disabled{opacity:.4;cursor:not-allowed}
+.go:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+/* board */
+.board{border:4px solid var(--frame);box-shadow:0 0 0 4px #3c6b40}
+#board{display:block;width:100%;height:auto;image-rendering:pixelated}
+.bar{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.turn{font-size:clamp(10px,2vw,13px);line-height:1.6}
+.turn small{display:block;font-size:8px;color:var(--muted);margin-top:4px}
+.dice{display:flex;gap:12px;align-items:center}
+.die{width:52px;height:52px;background:#fffbe8;border:4px solid #000;display:grid;place-items:center;color:#1a1405;font-size:20px}
+.log{list-style:none;margin:0;padding:10px 12px;background:var(--card);border:3px solid var(--frame);font-size:8px;line-height:1.9;display:grid;gap:2px;min-height:5.6em}
+.log li:first-child{color:var(--gold)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:8px;color:var(--muted);margin:0;padding:0;list-style:none}
+.legend i{display:inline-block;width:12px;height:12px;vertical-align:-2px;margin-right:6px;border:2px solid #000}
+@media (max-width:520px){.bar{grid-template-columns:1fr}.dice{justify-content:space-between}}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../">← Back to Max's Telescope</a>
+  <h1>Superpower Race</h1>
+
+  <section id="setup">
+    <p class="sub">Pick 2 to 4 racers. First to the windmill wins. Everyone has a superpower.</p>
+    <div class="roster" id="roster" style="margin-top:12px"></div>
+    <div style="display:grid;margin-top:14px"><button class="go" id="start" type="button" disabled>PICK 2 RACERS</button></div>
+  </section>
+
+  <section id="game" hidden style="display:grid;gap:12px">
+    <div class="board"><canvas id="board" aria-label="The race board: a winding path of 30 squares across Wimbledon Common to the windmill"></canvas></div>
+    <ul class="legend">
+      <li><i style="background:#4a90c8"></i>Puddle: back 2</li>
+      <li><i style="background:#e0b84a"></i>Shortcut: forward 3</li>
+      <li><i style="background:#c0453a"></i>Book</li>
+    </ul>
+    <div class="bar">
+      <div class="turn" id="turn" aria-live="polite"></div>
+      <div class="dice"><div class="die" id="die" aria-label="Dice">?</div><button class="go" id="roll" type="button">ROLL</button></div>
+    </div>
+    <ol class="log" id="log" aria-live="polite"></ol>
+    <button class="go" id="again" type="button" hidden>NEW RACE</button>
+  </section>
+</div>
+
+<script>
+(function(){
+const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
+const LEGS=["..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const R={
+ Jack:{rows:["...KKKKKK...","..KHHHHhHK..",".KHHhHHHHHK.",".KSSSSSSSSK.",".KKKKSSKKKK.",".KKWKSSKWKK.",".KSSSSSSSSK.",".KSSSWWSSSK.","..KKSSSSKK..",".KTTLTTLTTK.","KTTTLTTLTTTK","KSTTTLLTTTSK","KSKTTTTTTKSK"],pal:{H:'#9a9a9a',h:'#6b6b6b',S:'#f2c4a0',T:'#bcd4ee',L:'#1f8a42',P:'#2b3550'},
+  power:'Blue lights',desc:'A roll of 1 counts as 4.'},
+ Ellie:{rows:["...KKKKKK...","..KHHHHHHK..",".KHHHhHHHHK.",".KHHSSSSHHK.",".KHSSSSSSHK.",".KHSKSSKSHK.",".KHSSSSSSHK.",".KHSSWWSSHK.","KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTTSK","KSKTTTTTTKSK"],pal:{H:'#6b4a33',h:'#4a3222',S:'#f4c9ae',T:'#5a6a3a',P:'#2b2b35'},
+  power:'Thames walker',desc:'Past halfway, every move is 1 square longer.'},
+ 'Lauren L':{rows:["..KKKKKKKK..",".KHHHHHHHHK.","KHHHhHHHHHHK","KHHSSSSSSHHK","KHSSSSSSSSHK","KHSKSSSSKSHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTLTTMTHHK","KHHTTMTTLHHK","KSHTLTTTTHSK","KSKTTMTLTKSK"],pal:{H:'#2a1a14',h:'#43291d',S:'#ecbd9c',T:'#201c33',L:'#f08cb4',M:'#f6c945',P:'#201c33',O:'#c9a24e'},
+  power:'Corner shop',desc:'Roll a 6 and everyone else stops for biscuits: they all go back 1.'},
+ Matt:{rows:["...KKKKKK...","..KHHHHHHK..",".KHHhHHhHHK.",".KSSSSSSSSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KBSWWWWSBK.",".KBBSSSSBBK.","..KKBBBBKK..",".KTTTWWTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKSK"],pal:{H:'#5a3f2c',h:'#3f2a1c',S:'#f0c2a2',B:'#b88f74',T:'#2f7d4a',P:'#20263b'},
+  power:'Penalty king',desc:'Roll a 5 and take another turn.'},
+ Ben:{rows:["..KKKKKKKK..",".KHHHHHHHHK.","KHHhHHHhHHHK","KHHHHhHHHHHK",".KHSHHSSHSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSBBBBBBSK.",".KSSWWWWSSK.","..KKSBBSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSKTTTTTTKSK"],pal:{H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'},
+  power:'Bookworm',desc:'Land on a book square and read ahead 3 squares.'},
+ Poppy:{rows:["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.",".KHSSSSSSHK.",".KHSKSSKSHK.",".KHSSSSSSHK.",".KHSSRRSSHK.","KHHKSSSSKHHK","KHHTLTTMTHHK","KHTTMTTLTTHK","KSTLTTMTTLSK","KSKTTLTTMKSK"],pal:{H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#6e5f5a',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',P:'#1d3f8f',O:'#222222'},
+  power:'Bake off',desc:'A roll of 2 bakes a cake: it counts as 6.'},
+ Max:{rows:["...KKKKKK...","..KHHhHHHK..",".KHHHHHHHHK.",".KSSSSSSSSK.",".KKKKSSKKKK.",".KKKKSSKKKK.",".KSSSSSSSSK.",".KBSWWWWSBK.","..KBBBBBBK..",".KTKTTTTKTK.","KTTKTRTTKTTK","KSLTKTTKTLSK","KSKTTKKTTKSK"],pal:{H:'#3b2618',h:'#52361f',S:'#efc2a0',B:'#4a3020',T:'#c9ced6',L:'#eef1f5',R:'#e04848',P:'#c9ced6',O:'#222222'},
+  power:'Rocket boots',desc:'Roll a 6 and blast off 4 extra squares.'},
+ 'Lauren B':{rows:["..KKKKKKKK..",".KHHHHHHHHK.","KHHHHHHHHHHK","KHHHHHHHHHHK","KHSSSSSSSSHK","KHSKSSSSKSHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTLTTLTHHK","KHTTLTTTLTHK","KSTLTTLTTTSK","KSKTTLTTLKSK"],pal:{H:'#3a2416',h:'#4e3220',S:'#f2c9ae',T:'#8fb3e0',L:'#3a6cb8',P:'#8fb3e0',O:'#e8e8f0'},
+  power:'Crafty raft',desc:'Puddles can\'t stop her, and shortcuts give her 1 extra.'},
+ Milo:{dog:true,rows:[".......BBB.","......BBbBB","......BeBBB","BB....BBBBN","BbBBBBbBBTT",".BbBGGBBB..",".BBBBBBBB..",".BB.B..BB.."],pal:{B:'#141414',b:'#3a3a3a',e:'#6a6a6a',N:'#000000',T:'#f08cb4',G:'#6b6f78'},
+  power:'Zoomies',desc:'Rolls two dice and keeps the higher. After a 6 he stops to sniff and misses a turn.'}
+};
+const NAMES=Object.keys(R);
+const LABEL=n=>n.startsWith('Lauren')?n:n;
+function sprite(c,name,scale,ox,oy){
+  const d=R[name],rows=d.dog?d.rows:d.rows.concat(LEGS),pal={...base,...d.pal};
+  rows.forEach((r,j)=>{for(let i=0;i<r.length;i++){const col=pal[r[i]];if(!col)continue;c.fillStyle=col;c.fillRect(ox+i*scale,oy+j*scale,scale,scale)}});
+}
+
+// ---------- setup ----------
+const chosen=[];
+const roster=document.getElementById('roster'),start=document.getElementById('start');
+NAMES.forEach(n=>{
+  const b=document.createElement('button');b.type='button';b.className='pick';b.setAttribute('aria-pressed','false');
+  const cv=document.createElement('canvas');cv.width=12;cv.height=17;sprite(cv.getContext('2d'),n,1,0,R[n].dog?9:0);
+  const txt=document.createElement('div');txt.innerHTML=`<b></b><span class="pw"></span><span></span>`;
+  txt.querySelector('b').textContent=n;txt.querySelector('.pw').textContent=R[n].power;txt.querySelectorAll('span')[1].textContent=R[n].desc;
+  b.append(cv,txt);
+  b.addEventListener('click',()=>{
+    const i=chosen.indexOf(n);
+    if(i>=0)chosen.splice(i,1);else if(chosen.length<4)chosen.push(n);
+    roster.querySelectorAll('.pick').forEach(x=>x.setAttribute('aria-pressed',chosen.includes(x.querySelector('b').textContent)));
+    start.disabled=chosen.length<2;start.textContent=chosen.length<2?'PICK 2 RACERS':`RACE (${chosen.length})`;
+  });
+  roster.appendChild(b);
+});
+
+// ---------- board ----------
+const N=30;
+const SPECIAL={6:'puddle',14:'puddle',22:'puddle',9:'short',18:'short',4:'book',11:'book',20:'book',26:'book'};
+const cv=document.getElementById('board'),ctx=cv.getContext('2d');
+const LW=200,LH=110;let U=4;
+const cells=[];
+(function layout(){
+  // a winding path: 3 rows of 10, snaking up the common to the windmill at the top right
+  for(let i=0;i<N;i++){const row=Math.floor(i/10),col=i%10,c=row%2?9-col:col;cells.push({x:14+c*17,y:92-row*28})}
+})();
+function size(){const w=cv.parentElement.clientWidth;U=Math.max(2,Math.floor(w/LW));cv.width=LW*U;cv.height=LH*U}
+new ResizeObserver(()=>{size();draw()}).observe(cv.parentElement);
+const px=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x*U),Math.round(y*U),Math.ceil(w*U),Math.ceil(h*U))};
+
+let players=[],turn=0,busy=false,over=false;
+function draw(){
+  if(!cv.width)size();
+  px(0,0,LW,LH,'#62b04c');
+  for(let y=0;y<LH;y+=4)for(let x=(y/4%2)*3;x<LW;x+=6)px(x,y,1,2,'#529c40');
+  // trees along the top
+  for(let x=0;x<LW;x+=9)px(x,0,7,4,'#2f6b3a');
+  // path between cells
+  for(let i=0;i<N-1;i++){const a=cells[i],b=cells[i+1];const x0=Math.min(a.x,b.x),y0=Math.min(a.y,b.y);px(x0+5,y0+5,Math.abs(a.x-b.x)+4,Math.abs(a.y-b.y)+4,'#cfae74')}
+  // cells
+  cells.forEach((c,i)=>{
+    const sp=SPECIAL[i],col=sp==='puddle'?'#4a90c8':sp==='short'?'#e0b84a':sp==='book'?'#c0453a':'#e8d6a8';
+    px(c.x,c.y,14,14,'#3a2a1a');px(c.x+1,c.y+1,12,12,col);
+    if(sp==='book'){px(c.x+4,c.y+4,6,6,'#fff3dc');px(c.x+7,c.y+4,1,6,'#3a2a1a')}
+    if(sp==='short'){px(c.x+4,c.y+6,6,2,'#3a2a1a');px(c.x+8,c.y+4,1,6,'#3a2a1a');px(c.x+9,c.y+5,1,4,'#3a2a1a')}
+    if(sp==='puddle'){px(c.x+3,c.y+6,8,3,'#8fc8f0')}
+  });
+  // numbers
+  ctx.font=`${Math.max(6,U*2.2)}px "Press Start 2P", monospace`;ctx.fillStyle='#3a2a1a';ctx.textBaseline='top';
+  [0,9,19,29].forEach(i=>ctx.fillText(i===0?'GO':String(i+1),(cells[i].x+2)*U,(cells[i].y-6)*U));
+  // windmill at the finish
+  const f=cells[N-1];const wx=f.x+26,wy=f.y+13;
+  px(wx-8,wy-6,16,6,'#4a3b33');for(let r=0;r<14;r++){const w=Math.round(9-4*r/13);px(wx-w/2,wy-7-r,w,1,'#1f2433')}
+  px(wx-3,wy-23,6,2,'#e9e9e3');[[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([dx,dy])=>{for(let t=2;t<9;t++)px(wx+dx*t,wy-22+dy*t,1,1,'#fbfbf8')});
+  // racers
+  players.forEach((p,k)=>{
+    const c=cells[Math.min(N-1,p.pos)],sameIdx=players.filter((q,j)=>j<k&&Math.min(N-1,q.pos)===Math.min(N-1,p.pos)).length;
+    const s=U>=4?1:1;ctx.save();
+    const ox=(c.x+1+sameIdx*4)*U,oy=(c.y-11+(sameIdx%2)*2)*U;
+    sprite(ctx,p.name,U*0.75,ox,oy+(R[p.name].dog?9*U*0.75:0));
+    if(k===turn&&!over){px(c.x+4+sameIdx*4,c.y-15,4,2,'#f6d34a')}
+    ctx.restore();
+  });
+}
+
+// ---------- game ----------
+const turnEl=document.getElementById('turn'),dieEl=document.getElementById('die'),rollBtn=document.getElementById('roll'),log=document.getElementById('log'),again=document.getElementById('again');
+function say(msg){const li=document.createElement('li');li.textContent=msg;log.prepend(li);while(log.children.length>4)log.lastChild.remove()}
+function showTurn(){const p=players[turn];turnEl.innerHTML='';const t=document.createElement('span');t.textContent=`${p.name}'s turn`;const sm=document.createElement('small');sm.textContent=`${R[p.name].power}: ${R[p.name].desc}`;turnEl.append(t,sm)}
+let ac=null;function tone(f,d,v,delay){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const tt=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.setValueAtTime(f,tt);g.gain.setValueAtTime(.0001,tt);g.gain.exponentialRampToValueAtTime(v||.04,tt+.01);g.gain.exponentialRampToValueAtTime(.0001,tt+d);o.connect(g);g.connect(ac.destination);o.start(tt);o.stop(tt+d+.05)}catch(e){}}
+const d6=()=>1+Math.floor(Math.random()*6);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+start.addEventListener('click',()=>{
+  players=chosen.map(n=>({name:n,pos:0,skip:false}));turn=0;over=false;log.innerHTML='';
+  document.getElementById('setup').hidden=true;document.getElementById('game').hidden=false;
+  size();draw();showTurn();say('On your marks... roll to start!');rollBtn.disabled=false;rollBtn.focus();
+});
+again.addEventListener('click',()=>{document.getElementById('game').hidden=true;document.getElementById('setup').hidden=false;again.hidden=true;dieEl.textContent='?'});
+
+async function step(p,n){const dir=Math.sign(n);for(let i=0;i<Math.abs(n);i++){p.pos=Math.max(0,Math.min(N-1,p.pos+dir));draw();tone(dir>0?520:300,.05,.03);await wait(170)}}
+
+rollBtn.addEventListener('click',async()=>{
+  if(busy||over)return;busy=true;rollBtn.disabled=true;
+  const p=players[turn],name=p.name;
+  if(p.skip){p.skip=false;say(`${name} is busy sniffing a tree and misses this turn.`);busy=false;nextTurn();return}
+  // roll (the number ticks over a few times, calmly)
+  let roll;for(let i=0;i<5;i++){dieEl.textContent=d6();await wait(90)}
+  roll=d6();
+  if(name==='Milo'){const r2=d6();say(`Milo rolls ${roll} and ${r2} and keeps the ${Math.max(roll,r2)}.`);roll=Math.max(roll,r2)}
+  dieEl.textContent=roll;tone(660,.08,.05);
+  let move=roll,extraTurn=false;
+  if(name==='Jack'&&roll===1){move=4;say('Blue lights! Jack\'s 1 counts as 4.')}
+  if(name==='Poppy'&&roll===2){move=6;say('Bake off! Poppy\'s 2 becomes a 6.')}
+  if(name==='Ellie'&&p.pos>=N/2){move+=1;say('Thames walker: Ellie strides 1 extra.')}
+  if(name==='Max'&&roll===6){move+=4;say('Rocket boots! Max blasts 4 extra.')}
+  if(name==='Matt'&&roll===5){extraTurn=true}
+  if(name==='Milo'&&roll===6){p.skip=true}
+  if(!(name==='Jack'&&roll===1)&&!(name==='Poppy'&&roll===2)&&!(name==='Max'&&roll===6))say(`${name} rolls a ${roll}.`);
+  await step(p,move);
+  // squares
+  if(p.pos<N-1){
+    const sp=SPECIAL[p.pos];
+    if(sp==='puddle'){if(name==='Lauren B')say('Puddle! Lauren B floats over on her crafty raft.');else{say(`Splash! ${name} slips back 2.`);await wait(250);await step(p,-2)}}
+    else if(sp==='short'){const n=name==='Lauren B'?4:3;say(`Shortcut! ${name} cuts ahead ${n}.`);await wait(250);await step(p,n)}
+    else if(sp==='book'&&name==='Ben'){say('Bookworm! Ben reads ahead 3.');await wait(250);await step(p,3)}
+  }
+  if(name==='Lauren L'&&roll===6){say('Corner shop! Everyone else stops for biscuits and goes back 1.');for(const q of players)if(q!==p&&q.pos<N-1){q.pos=Math.max(0,q.pos-1)}draw()}
+  if(name==='Milo'&&roll===6)say('Milo got a 6, so he\'ll stop for a sniff next turn.');
+  if(p.pos>=N-1){over=true;draw();say(`${name} reaches the windmill and wins the race!`);turnEl.textContent=`${name} wins!`;
+    tone(523,.12,.05);tone(659,.12,.05,.12);tone(784,.3,.05,.24);again.hidden=false;busy=false;return}
+  if(extraTurn){say('Penalty king! Matt takes another turn.');busy=false;rollBtn.disabled=false;showTurn();draw();return}
+  busy=false;nextTurn();
+});
+function nextTurn(){turn=(turn+1)%players.length;showTurn();draw();rollBtn.disabled=false}
+})();
+</script>
+
+</body>
+</html>
