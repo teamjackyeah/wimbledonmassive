@@ -104,6 +104,10 @@ const BODY={
  "..KKKKKKKK..",".KHHHHHHHHK.","KHHhHHHhHHHK","KHHHHhHHHHHK",
  ".KHSHHSSHSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSBBBBBBSK.",
  ".KSSWWWWSSK.","..KKSBBSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSKTTTTTTKSK"],
+ laurenb:[
+ "..KKKKKKKK..",".KHHHHHHHHK.","KHHHHHHHHHHK","KHHHHHHHHHHK",
+ "KHSSSSSSSSHK","KHSKSSSSKSHK","KHSSSSSSSSHK","KHSSSWWSSSHK",
+ "KHHKSSSSKHHK","KHHTLTTLTHHK","KHTTLTTTLTHK","KSTLTTLTTTSK","KSKTTLTTLKSK"],
  max:[
  "...KKKKKK...","..KHHhHHHK..",".KHHHHHHHHK.",".KSSSSSSSSK.",
  ".KKKKSSKKKK.",".KKKKSSKKKK.",".KSSSSSSSSK.",".KBSWWWWSBK.",
@@ -125,16 +129,17 @@ const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
 const CHARS=[
  {name:'Jack', rows:BODY.jack, pal:{...base,H:'#9a9a9a',h:'#6b6b6b',S:'#f2c4a0',T:'#bcd4ee',L:'#1f8a42',P:'#2b3550'}},
  {name:'Ellie',rows:BODY.ellie,pal:{...base,H:'#6b4a33',h:'#4a3222',S:'#f4c9ae',T:'#5a6a3a',P:'#2b2b35'}},
- {name:'Lauren',rows:BODY.lauren,pet:true,pal:{...base,H:'#2a1a14',h:'#43291d',S:'#ecbd9c',T:'#201c33',L:'#f08cb4',M:'#f6c945',P:'#201c33',O:'#c9a24e'}},
+ {name:'Lauren L',label:'Lauren',icons:['bulb','stone'],rows:BODY.lauren,pet:true,pal:{...base,H:'#2a1a14',h:'#43291d',S:'#ecbd9c',T:'#201c33',L:'#f08cb4',M:'#f6c945',P:'#201c33',O:'#c9a24e'}},
  {name:'Matt',rows:BODY.matt,pal:{...base,H:'#5a3f2c',h:'#3f2a1c',S:'#f0c2a2',B:'#b88f74',T:'#2f7d4a',P:'#20263b'}},
  {name:'Ben',rows:BODY.ben,pal:{...base,H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'}},
  {name:'Poppy',rows:BODY.poppy,pal:{...base,H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#6e5f5a',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',P:'#1d3f8f',O:'#222222'}},
- {name:'Max',rows:BODY.max,pal:{...base,H:'#3b2618',h:'#52361f',S:'#efc2a0',B:'#4a3020',T:'#c9ced6',L:'#eef1f5',R:'#e04848',P:'#c9ced6',O:'#222222'}}
+ {name:'Max',rows:BODY.max,pal:{...base,H:'#3b2618',h:'#52361f',S:'#efc2a0',B:'#4a3020',T:'#c9ced6',L:'#eef1f5',R:'#e04848',P:'#c9ced6',O:'#222222'}},
+ {name:'Lauren B',label:'Lauren',icons:['bell'],rows:BODY.laurenb,pal:{...base,H:'#3a2416',h:'#4e3220',S:'#f2c9ae',T:'#8fb3e0',L:'#3a6cb8',P:'#8fb3e0',O:'#e8e8f0'}}
 ];
 
 /* ---------- seasons and birthdays ---------- */
 // Birthdays as 'MM-DD', e.g. Jack:'03-14'
-const BIRTHDAYS={Jack:null,Ellie:null,Lauren:null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06'};
+const BIRTHDAYS={Jack:null,Ellie:null,'Lauren L':null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06','Lauren B':'06-20'};
 const SKY_DAY=['#5aa3e6','#68afeb','#78bcf0','#8bc9f3','#a2d6f5','#bce3f6'];
 const GREEN_FAR=['#4a7f55','#5f9466','#76a97a'],GREEN_NEAR=['#24552d','#2f6b3a','#3f8248'];
 const AUT_FAR=[['#a5642c','#c97d33','#e0a24a'],['#8f4a24','#b25a2b','#d07a3a'],GREEN_FAR];
@@ -157,7 +162,7 @@ function pickTheme(){
   T=THEMES[season];
   if(h.startsWith('birthday-')){const c=CHARS.find(c=>c.name&&c.name.toLowerCase()===h.slice(9));bday=c?[c.name]:[]}
   else{const k=todayKey(d);bday=Object.keys(BIRTHDAYS).filter(n=>BIRTHDAYS[n]===k)}
-  document.querySelector('.title').innerHTML=bday.length?`<span>Happy Birthday</span> <span>${bday.join(' &amp; ')}</span>`:'<span>Wimbledon</span> <span>Massive</span>';
+  document.querySelector('.title').innerHTML=bday.length?`<span>Happy Birthday</span> <span>${bday.map(n=>{const c=CHARS.find(c=>c.name===n);return c&&c.label?c.label:n}).join(' &amp; ')}</span>`:'<span>Wimbledon</span> <span>Massive</span>';
 }
 pickTheme();
 
@@ -330,7 +335,7 @@ function spawn(){
   people[0].state='walk';people[0].tx=people[1].x-14;people[0].ty=people[1].y;
 }
 const cooldown=new Map();
-function greetLine(to){if(to.name&&bday.includes(to.name))return `Happy birthday ${to.name}!`;return to.name?`Hello ${to.name}!`:'Hello!'}
+function greetLine(to){if(to.name&&bday.includes(to.name))return `Happy birthday ${dispName(to)}!`;return to.name?`Hello ${dispName(to)}!`:'Hello!'}
 
 function startChat(a,b){
   a.state=b.state='chat';
@@ -427,11 +432,25 @@ function drawPerson(p){
     px(ctx,hx,y-26,1,20,'#e6e6e6');px(ctx,hx-2,y-31,5,4,c);px(ctx,hx-1,y-32,3,6,c);px(ctx,hx-1,y-31,1,1,'#ffffff');
   }
 }
+// tiny pixel icons that sit after a name (Lauren Bell's bell, Lauren Lightstone's light and stone)
+const TAG_ICONS={
+ bell:{pal:{K:'#3a2a10',Y:'#f6c945',y:'#c9962a'},rows:["..K..",".KYK.",".KYK.","KYYyK","KKKKK","..K.."]},
+ bulb:{pal:{K:'#3a2a10',Y:'#fff2a0',W:'#ffffff',G:'#8a8f99'},rows:[".KKK.","KYWYK","KYYYK",".KYK.",".KGK.",".KKK."]},
+ stone:{pal:{K:'#2a2a30',S:'#a3a7b0',s:'#7d828c',W:'#d8dbe0'},rows:["......",".KKK..","KSWSK.","KSSssK",".KKKK."]}
+};
+const dispName=p=>p.label||p.name;
 function drawTag(p){
-  const fs=Math.max(7,2.6*u);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textAlign='center';ctx.textBaseline='top';
-  const label=p.name||'?';const X=p.x*u,Y=(p.y+3)*u;
-  ctx.fillStyle='#1d3320';ctx.fillText(label,X+Math.max(1,u*0.4),Y+Math.max(1,u*0.4));
-  ctx.fillStyle='#fffbe8';ctx.fillText(label,X,Y);
+  const fs=Math.max(7,2.6*u);ctx.font=`${fs}px "Press Start 2P", monospace`;ctx.textBaseline='top';
+  const label=dispName(p)||'?';const Y=(p.y+3)*u;
+  const icons=p.icons||[],ip=Math.max(2,Math.round(fs/4.5)),iw=icons.reduce((a,k)=>a+(TAG_ICONS[k].rows[0].length+1)*ip,0);
+  const tw=ctx.measureText(label).width,total=tw+(iw?ip*2+iw:0),X0=p.x*u-total/2;
+  ctx.textAlign='left';
+  ctx.fillStyle='#1d3320';ctx.fillText(label,X0+Math.max(1,u*0.4),Y+Math.max(1,u*0.4));
+  ctx.fillStyle='#fffbe8';ctx.fillText(label,X0,Y);
+  let ix=X0+tw+ip*2;
+  icons.forEach(k=>{const ic=TAG_ICONS[k],oy=Y+(fs-ic.rows.length*ip)/2;
+    ic.rows.forEach((r,j)=>{for(let i=0;i<r.length;i++){const c=ic.pal[r[i]];if(!c)continue;ctx.fillStyle=c;ctx.fillRect(Math.round(ix+i*ip),Math.round(oy+j*ip),ip,ip)}});
+    ix+=(ic.rows[0].length+1)*ip});
 }
 function drawBubble(p){
   if(!p.say)return;
@@ -480,8 +499,8 @@ function resize(){
 }
 
 /* ---------- tap a person to visit their page ---------- */
-const LINKS={Jack:'https://teamjackyeah.com'};
-function pageFor(p){if(!p.name)return null;if(LINKS[p.name])return LINKS[p.name];const slug=p.name.toLowerCase();return location.hostname.includes('wimbledonmassive')?'/'+slug+'/':'https://www.wimbledonmassive.com/'+slug+'/'}
+const LINKS={Jack:'https://teamjackyeah.com','Lauren L':'https://www.wimbledonmassive.com/lauren/'};
+function pageFor(p){if(!p.name)return null;if(LINKS[p.name])return LINKS[p.name];const slug=p.name.toLowerCase().replace(/\s+/g,'');return location.hostname.includes('wimbledonmassive')?'/'+slug+'/':'https://www.wimbledonmassive.com/'+slug+'/'}
 function go(url){
   if(window.self!==window.top){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
   else location.href=url;
@@ -509,7 +528,7 @@ cv.addEventListener('click',e=>{
   if(!hit){if(onMill(e))go(location.hostname.includes('wimbledonmassive')?'/theme/':'https://www.wimbledonmassive.com/theme/');return}
   const url=pageFor(hit);
   if(hit.chat){hit.chat.a.say=hit.chat.b.say=null;const c=hit.chat;c.a.chat=c.b.chat=null;c.a.state=c.b.state='idle';c.a.wait=c.b.wait=1}
-  if(hit.state!=='leave'){hit.state='idle';hit.wait=2}hit.say=hit.name?`Hi, I'm ${hit.name}!`:'Hi!';hit.sayT=2;
+  if(hit.state!=='leave'){hit.state='idle';hit.wait=2}hit.say=hit.name?`Hi, I'm ${dispName(hit)}!`:'Hi!';hit.sayT=2;
   if(url)go(url);
 });
 
