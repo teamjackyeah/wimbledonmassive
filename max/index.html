@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Max's Telescope</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: one full-screen night sky over Wimbledon Common. Max stands bottom-left with his telescope; a magnified circular view follows your finger or mouse. Things you find get a card at the bottom. Single dark look; steady stars, nothing flashes. */
+:root{
+  --night:#05081a;
+  --ink:#f2f4f8;
+  --muted:#9aa3c8;
+  --card:rgba(10,14,38,.88);
+  --edge:#2c3a78;
+  --gold:#ffd23f;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--ink);font-family:var(--pixel);overflow:hidden;-webkit-user-select:none;user-select:none}
+#sky{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:none}
+.top{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));pointer-events:none}
+.top a,.top button{pointer-events:auto}
+.back{color:var(--muted);font-size:9px;text-decoration:none;padding:6px 0}
+.back:hover,.back:focus-visible{color:var(--ink)}
+.title{text-align:right;display:grid;gap:6px}
+.title h1{margin:0;font-weight:400;font-size:clamp(12px,3vw,20px);text-shadow:3px 3px 0 #000}
+.count{font-size:9px;color:var(--gold)}
+.race{font-family:var(--pixel);font-size:9px;background:var(--gold);color:#1a1405;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:8px 10px;text-decoration:none;justify-self:end}
+.race:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.card{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(520px,calc(100% - 32px));
+  background:var(--card);border:3px solid var(--edge);padding:12px 14px;display:grid;gap:6px;pointer-events:none;transition:opacity .4s}
+.card[hidden]{display:grid;opacity:0}
+.card h2{margin:0;font-weight:400;font-size:11px;color:var(--gold)}
+.card p{margin:0;font-size:9px;line-height:1.8;color:var(--ink)}
+.hint{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);font-size:10px;color:var(--muted);text-align:center;line-height:2;pointer-events:none;transition:opacity .6s}
+@media (prefers-reduced-motion: reduce){.card,.hint{transition:none}}
+</style>
+
+<canvas id="sky" aria-label="Night sky over Wimbledon Common seen through Max's telescope. Move around to find the Moon, planets, stars and a galaxy."></canvas>
+<div class="top">
+  <a class="back" href="../">← Back to the Common</a>
+  <div class="title">
+    <h1>Max's Telescope</h1>
+    <span class="count" id="count">SPOTTED 0 OF 8</span>
+    <a class="race" href="race/">SUPERPOWER RACE →</a>
+  </div>
+</div>
+<p class="hint" id="hint">Drag or move to look around.<br>Find all 8 things in tonight's sky.</p>
+<div class="card" id="card" hidden aria-live="polite"><h2 id="cardT"></h2><p id="cardP"></p></div>
+
+<script>
+(function(){
+// ---------- tonight's moon (real phase) ----------
+const SYN=29.530588853,REF=Date.UTC(2000,0,6,18,14)/86400000;
+const age=((Date.now()/86400000-REF)%SYN+SYN)%SYN,phase=age/SYN;
+const PHASES=[[0.03,'New Moon'],[0.22,'Waxing Crescent'],[0.28,'First Quarter'],[0.47,'Waxing Gibbous'],[0.53,'Full Moon'],[0.72,'Waning Gibbous'],[0.78,'Last Quarter'],[0.97,'Waning Crescent'],[1.01,'New Moon']];
+const phaseName=PHASES.find(p=>phase<p[0])[1];
+const lit=Math.round((1-Math.cos(phase*2*Math.PI))/2*100);
+
+const THINGS=[
+ {id:'moon',x:.78,y:.2,r:13,name:"Tonight's Moon",fact:`It's a ${phaseName} tonight, about ${lit}% lit. The Moon is around 384,000 km away, and it's slowly drifting about 4 cm further from Earth every year.`},
+ {id:'jupiter',x:.3,y:.26,r:8,name:'Jupiter',fact:'The biggest planet. Even a small telescope shows its four largest moons in a line. Galileo spotted them in 1610.'},
+ {id:'saturn',x:.56,y:.42,r:8,name:'Saturn',fact:'Its rings are mostly chunks of ice. Saturn is so light for its size that it would float in a big enough bath.'},
+ {id:'mars',x:.14,y:.52,r:5,name:'Mars',fact:'The Red Planet gets its colour from rusty iron in its dust. Its volcano Olympus Mons is nearly three times the height of Everest.'},
+ {id:'orion',x:.4,y:.6,r:16,name:'Orion the Hunter',fact:'The orange star on his shoulder is Betelgeuse, a red supergiant. The fuzzy patch in his sword is a nursery where new stars are being born.'},
+ {id:'plough',x:.86,y:.56,r:16,name:'The Plough',fact:'Follow the two stars at the end of the Plough upwards and they point to Polaris, the North Star.'},
+ {id:'andromeda',x:.6,y:.13,r:10,name:'Andromeda Galaxy',fact:'About 2.5 million light years away, it is the most distant thing you can see with the naked eye. The light you see left it before humans existed.'},
+ {id:'pleiades',x:.1,y:.2,r:8,name:'The Pleiades',fact:'Also called the Seven Sisters: a cluster of young, hot blue stars about 440 light years away.'}
+];
+const found=new Set();
+
+// ---------- canvases ----------
+const cv=document.getElementById('sky'),ctx=cv.getContext('2d');
+const tex=document.createElement('canvas'),t=tex.getContext('2d');
+let P=3,LW=0,LH=0,TW=0,TH=0,SKYH=0;const Z=3;
+function rng(s){return()=>{s=(s*16807)%2147483647;return s/2147483647}}
+const tp=(x,y,w,h,c)=>{t.fillStyle=c;t.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)))};
+function disc(cx,cy,r,fn){for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){const d=(x*x+y*y)/(r*r);if(d<=1)fn(cx+x,cy+y,x/r,y/r,d)}}
+
+function buildSky(){
+  const r=rng(42);
+  t.fillStyle='#05081a';t.fillRect(0,0,TW,TH);
+  // faint milky band
+  for(let i=0;i<TW*1.2;i++){const x=r()*TW,y=TH*0.15+x*0.25+(r()-.5)*TH*0.18;t.globalAlpha=.08;tp(x,y,2,2,'#8090d0');t.globalAlpha=1}
+  // background stars
+  for(let i=0;i<TW*TH/220;i++){const b=r();tp(r()*TW,r()*SKYH,1,1,b>.9?'#ffffff':b>.6?'#b9c2ea':'#5a6494')}
+  // naked-eye view: same stars, but the planets and deep-sky things are just small points of light
+  baseTex.width=TW;baseTex.height=TH;const bt=baseTex.getContext('2d');bt.drawImage(tex,0,0);
+  const dot=(x,y,sz,c)=>{bt.fillStyle=c;bt.fillRect(Math.round(x-sz/2),Math.round(y-sz/2),sz,sz)};
+  const EYE={moon:[6*Z,'#ece8d6'],jupiter:[Z*1.4,'#fff2d6'],saturn:[Z,'#f5e2b0'],mars:[Z,'#e07a4a'],andromeda:[Z,'#8a90c0'],pleiades:[Z,'#cfe0ff']};
+  THINGS.forEach(o=>{const cx=o.x*TW,cy=o.y*SKYH;if(EYE[o.id]){const [sz,c]=EYE[o.id];if(o.id==='moon'){bt.globalAlpha=.9;for(let y=-sz;y<=sz;y++)for(let x=-sz;x<=sz;x++)if(x*x+y*y<=sz*sz)dot(cx+x,cy+y,1,c);bt.globalAlpha=1}else dot(cx,cy,sz,c)}});
+  // constellations show their stars (no lines) to the naked eye
+  t.save();const tmp=t;
+  THINGS.forEach(o=>{const cx=o.x*TW,cy=o.y*SKYH,s=Z;draw[o.id](cx,cy,s,r)});
+  const S5=Z*5,S4=Z*4,o1=THINGS.find(o=>o.id==='orion'),o2=THINGS.find(o=>o.id==='plough');
+  [[-3,-5,'#ff9a5a'],[3,-5,'#dfe8ff'],[-1,0,'#dfe8ff'],[0,.2,'#dfe8ff'],[1,.4,'#dfe8ff'],[-3,5,'#dfe8ff'],[3,5,'#bcd6ff']].forEach(([x,y,c])=>dot(o1.x*TW+x*S5,o1.y*SKYH+y*S5,Z,c));
+  [[-5,1],[-3,0],[-1,.5],[1,1],[1.5,3],[4,3.3],[4.3,.8]].forEach(([x,y])=>dot(o2.x*TW+x*S4,o2.y*SKYH+y*S4,Z,'#eef2ff'));
+  t.restore();
+}
+const baseTex=document.createElement('canvas');
+const draw={
+  moon(cx,cy,s){const R=Math.round(13*s);disc(cx,cy,R,(x,y,nx,ny)=>{
+    const edge=Math.sqrt(Math.max(0,1-ny*ny));const on=phase<.5?nx>edge*Math.cos(2*Math.PI*phase):nx<-edge*Math.cos(2*Math.PI*phase);
+    let c=on?'#ece8d6':'#1b1f33';
+    if(on&&((Math.abs(nx-.25)<.14&&Math.abs(ny+.2)<.12)||(Math.abs(nx+.35)<.12&&Math.abs(ny-.3)<.1)||(Math.abs(nx-.1)<.08&&Math.abs(ny-.45)<.07)))c='#c9c4ad';
+    tp(x,y,1,1,c)})},
+  jupiter(cx,cy,s){const R=Math.round(7*s);disc(cx,cy,R,(x,y,nx,ny)=>{const band=Math.floor((ny+1)*5)%2;let c=band?'#d9b48a':'#f2dcb8';if(Math.abs(nx-.3)<.15&&Math.abs(ny-.25)<.1)c='#c2603a';tp(x,y,1,1,c)});
+    [-2.6,-1.8,1.7,2.9].forEach(k=>tp(cx+k*R,cy,s,s,'#fff6e0'))},
+  saturn(cx,cy,s){const R=Math.round(6*s);
+    for(let a=0;a<Math.PI*2;a+=.01){const x=Math.cos(a)*R*2.1,y=Math.sin(a)*R*.55;if(y<0)tp(cx+x,cy+y,s*.7,s*.7,'#cdbb8a')}
+    disc(cx,cy,R,(x,y,nx,ny)=>tp(x,y,1,1,Math.floor((ny+1)*4)%2?'#e6cf96':'#f5e2b0'));
+    for(let a=0;a<Math.PI*2;a+=.01){const x=Math.cos(a)*R*2.1,y=Math.sin(a)*R*.55;if(y>=0)tp(cx+x,cy+y,s*.7,s*.7,'#cdbb8a')}},
+  mars(cx,cy,s){const R=Math.round(5*s);disc(cx,cy,R,(x,y,nx,ny)=>tp(x,y,1,1,ny<-.75?'#f4ece6':(nx+ny>.4?'#a8412a':'#d0623a')))},
+  orion(cx,cy,s){const S=s*5,pts=[[-3,-5,'#ff9a5a',2],[3,-5,'#dfe8ff',1.5],[-1,0,'#dfe8ff',1],[0,.2,'#dfe8ff',1],[1,.4,'#dfe8ff',1],[-3,5,'#dfe8ff',1.4],[3,5,'#bcd6ff',2]];
+    t.globalAlpha=.25;[[0,2],[2,5],[0,1],[1,4],[4,6],[2,3],[3,4]].forEach(([a,b])=>line(cx+pts[a][0]*S,cy+pts[a][1]*S,cx+pts[b][0]*S,cy+pts[b][1]*S,'#7f8ccf'));t.globalAlpha=1;
+    pts.forEach(([x,y,c,m])=>tp(cx+x*S-m*s/2,cy+y*S-m*s/2,m*s,m*s,c));
+    t.globalAlpha=.5;disc(cx,cy+3*S,Math.round(1.6*s),(x,y)=>tp(x,y,1,1,'#d48ad8'));t.globalAlpha=1},
+  plough(cx,cy,s){const S=s*4,pts=[[-5,1],[-3,0],[-1,.5],[1,1],[1.5,3],[4,3.3],[4.3,.8]];
+    t.globalAlpha=.25;for(let i=0;i<6;i++)line(cx+pts[i][0]*S,cy+pts[i][1]*S,cx+pts[i+1][0]*S,cy+pts[i+1][1]*S,'#7f8ccf');line(cx+pts[6][0]*S,cy+pts[6][1]*S,cx+pts[3][0]*S,cy+pts[3][1]*S,'#7f8ccf');t.globalAlpha=1;
+    pts.forEach(([x,y])=>tp(cx+x*S-s*.7,cy+y*S-s*.7,s*1.4,s*1.4,'#eef2ff'))},
+  andromeda(cx,cy,s){const R=10*s;for(let y=-R;y<=R;y++)for(let x=-R*2;x<=R*2;x++){const u=(x*.85+y*.5)/(R*2),v=(-x*.5+y*.85)/(R*.55),d=u*u+v*v;if(d<1){t.globalAlpha=Math.max(0,(1-d))*0.55;tp(cx+x,cy+y,1,1,d<.08?'#fff4e0':'#9fa6d8')}}t.globalAlpha=1},
+  pleiades(cx,cy,s){[[0,0],[2,1],[-2,1.5],[1,-2],[3,-1],[-1,3],[2.5,2.8]].forEach(([x,y],i)=>tp(cx+x*s*3,cy+y*s*3,s*(i<3?1.3:1),s*(i<3?1.3:1),'#cfe0ff'));
+    t.globalAlpha=.12;disc(cx+s*2,cy+s*2,Math.round(7*s),(x,y)=>tp(x,y,1,1,'#7fa0ff'));t.globalAlpha=1}
+};
+function line(x0,y0,x1,y1,c){const n=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));for(let i=0;i<=n;i++)tp(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n,1,1,c)}
+
+// Max on the Common with his telescope
+const MAX=["...KKKKKK...","..KHHhHHHK..",".KHHHHHHHHK.",".KSSSSSSSSK.",".KKKKSSKKKK.",".KKKKSSKKKK.",".KSSSSSSSSK.",".KBSWWWWSBK.","..KBBBBBBK..",".KTKTTTTKTK.","KTTKTRTTKTTK","KSLTKTTKTLSK","KSKTTKKTTKSK","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const MPAL={K:'#151515',W:'#ffffff',H:'#3b2618',h:'#52361f',S:'#efc2a0',B:'#4a3020',T:'#c9ced6',L:'#eef1f5',R:'#e04848',P:'#c9ced6',O:'#222222'};
+function ground(){
+  const gy=Math.round(LH*0.84);
+  const px=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x)*P,Math.round(y)*P,Math.ceil(w)*P,Math.ceil(h)*P)};
+  px(0,gy,LW,LH-gy,'#0b1610');
+  for(let x=-4;x<LW+6;x+=9){const r=4+((x*13)%4);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(dx*dx+dy*dy<=r*r)px(x+dx,gy-r+dy,1,1,'#08120c')}
+  // windmill silhouette far right
+  const wx=Math.round(LW*.86);for(let r=0;r<12;r++){const ww=Math.round(8-3*r/11);px(wx-Math.floor(ww/2),gy-6-r,ww,1,'#0f1626')}px(wx-9,gy-6,18,6,'#111a2a');
+  // Max and telescope
+  const mx=Math.round(LW*.1),my=gy-17;
+  MAX.forEach((row,j)=>{for(let i=0;i<12;i++){const c=MPAL[row[i]];if(c)px(mx+i,my+j,1,1,c)}});
+  px(mx+14,gy-8,1,8,'#3a3a46');px(mx+17,gy-8,1,8,'#3a3a46');
+  for(let i=0;i<9;i++)px(mx+13+i,gy-10-i,3,2,i<2?'#d8dce4':'#9aa3b8');
+}
+
+let LWc=0;
+function size(){
+  const dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.round(innerWidth*dpr);cv.height=Math.round(innerHeight*dpr);
+  P=(innerWidth<520?3:4)*dpr;LW=Math.ceil(cv.width/P);LH=Math.ceil(cv.height/P);
+  TW=LW*Z;TH=LH*Z;SKYH=Math.round(TH*0.84);tex.width=TW;tex.height=TH;buildSky();
+  if(!aimSet){aim.x=cv.width*.5;aim.y=cv.height*.42}
+}
+const aim={x:0,y:0};let aimSet=false,moved=false;
+addEventListener('resize',size);size();
+
+function setAim(e){const r=cv.getBoundingClientRect(),dpr=cv.width/r.width;aim.x=(e.clientX-r.left)*dpr;aim.y=(e.clientY-r.top)*dpr;aimSet=true;
+  if(!moved){moved=true;document.getElementById('hint').style.opacity=0}}
+cv.addEventListener('pointermove',setAim);cv.addEventListener('pointerdown',e=>{setAim(e);cv.setPointerCapture(e.pointerId)});
+// keyboard: arrows move the telescope
+addEventListener('keydown',e=>{const k={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!k)return;e.preventDefault();aim.x=Math.max(0,Math.min(cv.width,aim.x+k[0]*30));aim.y=Math.max(0,Math.min(cv.height,aim.y+k[1]*30));aimSet=true;if(!moved){moved=true;document.getElementById('hint').style.opacity=0}});
+cv.tabIndex=0;
+
+const card=document.getElementById('card'),cardT=document.getElementById('cardT'),cardP=document.getElementById('cardP'),count=document.getElementById('count');
+let showing=null;
+function frame(){
+  const W=cv.width,H=cv.height;
+  ctx.imageSmoothingEnabled=false;
+  // dim naked-eye view
+  ctx.drawImage(baseTex,0,0,W,H);
+  ctx.fillStyle='rgba(2,4,14,.35)';ctx.fillRect(0,0,W,H);
+  ground();
+  // telescope view
+  const R=Math.min(W,H)*0.22,base=W/TW,sc=base*Z,sw=2*R/sc;
+  const tx=aim.x/base,ty=aim.y/base;
+  ctx.save();ctx.beginPath();ctx.arc(aim.x,aim.y,R,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#05081a';ctx.fillRect(aim.x-R,aim.y-R,2*R,2*R);
+  ctx.drawImage(tex,tx-sw/2,ty-sw/2,sw,sw,aim.x-R,aim.y-R,2*R,2*R);
+  ctx.restore();
+  ctx.lineWidth=Math.max(6,R*.08);ctx.strokeStyle='#1d2238';ctx.beginPath();ctx.arc(aim.x,aim.y,R,0,Math.PI*2);ctx.stroke();
+  ctx.lineWidth=2;ctx.strokeStyle='rgba(160,175,220,.35)';ctx.beginPath();ctx.moveTo(aim.x-8,aim.y);ctx.lineTo(aim.x+8,aim.y);ctx.moveTo(aim.x,aim.y-8);ctx.lineTo(aim.x,aim.y+8);ctx.stroke();
+  // what's in view?
+  let best=null,bd=1e9;
+  THINGS.forEach(o=>{const d=Math.hypot(o.x*TW-tx,o.y*SKYH-ty);if(d<sw*0.32&&d<bd){bd=d;best=o}});
+  if(best!==showing){showing=best;
+    if(best){cardT.textContent=best.name;cardP.textContent=best.fact;card.hidden=false;if(!found.has(best.id)){found.add(best.id);count.textContent=`SPOTTED ${found.size} OF ${THINGS.length}`;if(found.size===THINGS.length)count.textContent='ALL 8 SPOTTED!'}}
+    else card.hidden=true}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
