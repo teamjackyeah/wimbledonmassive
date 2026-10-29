@@ -325,10 +325,23 @@ function drawParts(){parts.forEach(p=>px(ctx,Math.round(p.x+Math.sin(p.ph)*p.swa
 let people=[];
 function rand(a,b){return a+Math.random()*(b-a)}
 function walkBox(){return{x0:10,x1:LW-10,y0:wbase+20,y1:LH-6}}
-function newTarget(p){const b=walkBox();p.tx=rand(b.x0,b.x1);p.ty=rand(b.y0,b.y1);p.state='walk'}
+// personal space: pick the spot (out of a handful of tries) that is furthest from everyone else
+const GAP=28;
+function spread(x1,y1,x2,y2){return Math.hypot(x1-x2,(y1-y2)*1.6)}
+function roomiest(p,b){
+  let best=null,bestD=-1;
+  for(let k=0;k<14;k++){
+    const x=rand(b.x0,b.x1),y=rand(b.y0,b.y1);let d=1e9;
+    people.forEach(q=>{if(q===p||q.away)return;d=Math.min(d,spread(x,y,q.x,q.y));if(q.state==='walk')d=Math.min(d,spread(x,y,q.tx,q.ty))});
+    if(d>bestD){bestD=d;best={x,y}}
+  }
+  return best;
+}
+function newTarget(p){const b=walkBox(),t=roomiest(p,b);p.tx=t.x;p.ty=t.y;p.state='walk'}
 function spawn(){
   const b=walkBox();
-  people=CHARS.map((c,i)=>({...c,x:rand(b.x0,b.x1),y:rand(b.y0,b.y1),tx:0,ty:0,state:'idle',wait:rand(0.2,2),flip:Math.random()<.5,anim:0,say:null,sayT:0,chat:null}));
+  people=[];
+  CHARS.forEach(c=>{const p={...c,x:0,y:0,tx:0,ty:0,state:'idle',wait:rand(0.2,2),flip:Math.random()<.5,anim:0,say:null,sayT:0,chat:null};const t=roomiest(p,b);p.x=t.x;p.y=t.y;people.push(p)});
   // put Jack and Ellie near each other so they greet early
   people[0].x=LW*0.35;people[0].y=b.y0+(b.y1-b.y0)*0.55;
   people[1].x=LW*0.35+30;people[1].y=people[0].y+2;
@@ -348,7 +361,7 @@ function updateChat(chat,dt){
   b.say=t>=1.8&&t<3.6?greetLine(a):null;
   if(t>=3.6){
     a.chat=b.chat=null;a.say=b.say=null;
-    [a,b].forEach(p=>{p.state='idle';p.wait=rand(0.4,1.5)});
+    [a,b].forEach(p=>{p.state='idle';p.wait=rand(0.2,0.8)});
     cooldown.set(a.name+b.name+people.indexOf(a)+'-'+people.indexOf(b),performance.now()+12000);
   }
 }
@@ -393,6 +406,16 @@ function update(dt){
     }
   });
   chats.forEach(c=>updateChat(c,dt));
+  const bx=walkBox();
+  for(let i=0;i<people.length;i++)for(let j=i+1;j<people.length;j++){
+    const a=people[i],b=people[j];
+    if(a.away||b.away||a.state==='leave'||b.state==='leave')continue;
+    if(a.chat&&a.chat===b.chat)continue;
+    const dx=a.x-b.x,dy=(a.y-b.y)*1.6,d=Math.hypot(dx,dy)||0.01;
+    if(d<GAP){const push=(GAP-d)/GAP*40*dt,ux=dx/d,uy=dy/d;
+      if(!a.chat){a.x=Math.min(bx.x1,Math.max(bx.x0,a.x+ux*push));a.y=Math.min(bx.y1,Math.max(bx.y0,a.y+uy*push/1.6))}
+      if(!b.chat){b.x=Math.min(bx.x1,Math.max(bx.x0,b.x-ux*push));b.y=Math.min(bx.y1,Math.max(bx.y0,b.y-uy*push/1.6))}}
+  }
   checkT-=dt;
   if(checkT<=0){
     checkT=0.3;const now=performance.now();
