@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
 <style>
+*{-webkit-tap-highlight-color:transparent}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 :root{--bg:#1d2a3a;--panel:#f3efe6;--ink:#1d1d24;--muted:#6d6a72;--accent:#d98a7a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
 [hidden]{display:none!important}
 html,body{min-height:100%}
@@ -172,6 +174,7 @@ function colAt(e){const r=cv.getBoundingClientRect();const x=Math.floor((e.clien
 cv.addEventListener('pointermove',e=>{hover=colAt(e);draw()});
 cv.addEventListener('pointerleave',()=>{hover=null;draw()});
 cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
   const x=colAt(e),y=landing(x,size);
   if(y>=ROWS){msg.textContent='That stack is as tall as it goes.';return}
   bricks.push({x,y,w:size,c:colour});rebuild();clack(420+Math.random()*60);
