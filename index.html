@@ -116,6 +116,10 @@ const BODY={
  "...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.",
  ".KHSSSSSSHK.",".KHSKSSKSHK.",".KHSSSSSSHK.",".KHSSRRSSHK.",
  "KHHKSSSSKHHK","KHHTLTTMTHHK","KHTTMTTLTTHK","KSTLTTMTTLSK","KSKTTLTTMKSK"],
+ will:[
+ "...KKKKKK...","..KCCCCCCK..",".KCCCCCCCCK.","KccccccccccK",
+ ".KKKKSSKKKK.",".KKGKSSKGKK.",".KSSSSSSSSK.",".KSSSWWSSSK.",
+ "..KKSSSSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKSK"],
  gen:[
  "...KKKKKK...","..KHHHHHHK..",".KHHHHhHHHK.",".KSSSSSSSSK.",
  ".KSSSSSSSSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSSSWWSSSK.",
@@ -124,6 +128,10 @@ const BODY={
 const LEGS=[
  ["..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."],
  ["..KPPPPPPK..",".KPPK.KPPK..",".KPPK..KPPK.",".KOOK..KOOK."]
+];
+const WILL_LEGS=[
+ ["..KPPPPPPK..","..KSSKKSSK..","..KYYKKYYK..","..KOOKKOOK.."],
+ ["..KPPPPPPK..",".KSSK.KSSK..",".KYYK..KYYK.",".KOOK..KOOK."]
 ];
 const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
 const CHARS=[
@@ -134,12 +142,13 @@ const CHARS=[
  {name:'Ben',rows:BODY.ben,pal:{...base,H:'#5a3a24',h:'#7a5232',S:'#efc4a4',B:'#6b4a34',T:'#f2f2ee',P:'#2b3550'}},
  {name:'Poppy',rows:BODY.poppy,pal:{...base,H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',G:'#6e5f5a',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a',P:'#1d3f8f',O:'#222222'}},
  {name:'Max',rows:BODY.max,pal:{...base,H:'#3b2618',h:'#52361f',S:'#efc2a0',B:'#4a3020',T:'#c9ced6',L:'#eef1f5',R:'#e04848',P:'#c9ced6',O:'#222222'}},
- {name:'Lauren B',label:'Lauren',icons:['bell'],rows:BODY.laurenb,pal:{...base,H:'#3a2416',h:'#4e3220',S:'#f2c9ae',T:'#8fb3e0',L:'#3a6cb8',P:'#8fb3e0',O:'#e8e8f0'}}
+ {name:'Lauren B',label:'Lauren',icons:['bell'],rows:BODY.laurenb,pal:{...base,H:'#3a2416',h:'#4e3220',S:'#f2c9ae',T:'#8fb3e0',L:'#3a6cb8',P:'#8fb3e0',O:'#e8e8f0'}},
+ {name:'Will',rows:BODY.will,legs:WILL_LEGS,pal:{...base,C:'#d98a7a',c:'#b86a5c',G:'#7aa8d8',S:'#f2c4a0',T:'#4a4a4a',P:'#6f86a8',Y:'#d9a12a',O:'#6a5a4a'}}
 ];
 
 /* ---------- seasons and birthdays ---------- */
 // Birthdays as 'MM-DD', e.g. Jack:'03-14'
-const BIRTHDAYS={Jack:null,Ellie:null,'Lauren L':null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06','Lauren B':'06-20'};
+const BIRTHDAYS={Jack:null,Ellie:null,'Lauren L':null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06','Lauren B':'06-20',Will:'01-04'};
 const SKY_DAY=['#5aa3e6','#68afeb','#78bcf0','#8bc9f3','#a2d6f5','#bce3f6'];
 const GREEN_FAR=['#4a7f55','#5f9466','#76a97a'],GREEN_NEAR=['#24552d','#2f6b3a','#3f8248'];
 const AUT_FAR=[['#a5642c','#c97d33','#e0a24a'],['#8f4a24','#b25a2b','#d07a3a'],GREEN_FAR];
@@ -444,7 +453,7 @@ function drawPerson(p){
   if(p.pet)drawMilo(p);
   ctx.globalAlpha=0.25;px(ctx,x-5,y,10,1,'#000');px(ctx,x-4,y+1,8,1,'#000');ctx.globalAlpha=1;
   const frame=(p.state==='walk'||p.state==='leave')&&Math.floor(p.anim*6)%2===1?1:0;
-  const rows=p.rows.concat(LEGS[frame]);
+  const rows=p.rows.concat((p.legs||LEGS)[frame]);
   rows.forEach((row,j)=>{for(let i=0;i<12;i++){const ch=row[i];const col=p.pal[ch];if(!col)continue;const ix=p.flip?11-i:i;px(ctx,left+ix,top+j,1,1,col)}});
   if(!bday.length)return;
   if(bday.includes(p.name)){
