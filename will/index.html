@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Will's Brick Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#1d2a3a;--panel:#f3efe6;--ink:#1d1d24;--muted:#6d6a72;--accent:#d98a7a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px}
+.back{color:#c5cfe6;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+.sign{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.sign canvas{width:48px;height:68px;image-rendering:pixelated}
+.sign h1{margin:0;font-weight:400;font-size:clamp(13px,3.2vw,22px);line-height:1.5}
+.sign p{margin:6px 0 0;font-size:8px;line-height:1.8;color:var(--muted)}
+.work{display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start}
+@media (max-width:680px){.work{grid-template-columns:1fr}}
+#plate{width:100%;height:auto;image-rendering:pixelated;touch-action:none;cursor:pointer;border:3px solid #000;background:#cfe6f5;display:block}
+.tools{display:grid;gap:12px;align-content:start}
+.lbl{font-size:8px;color:var(--muted);margin:0 0 6px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.sw{width:30px;height:30px;border:3px solid #000;cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:2px}
+.btn{font-family:var(--pixel);font-size:9px;background:#fff;color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:9px 10px;cursor:pointer}
+.btn[aria-pressed="true"]{background:#ffe08a}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible,.sw:focus-visible{outline:3px solid #3a6cb8;outline-offset:2px}
+.msg{font-size:9px;line-height:1.9;margin:0;min-height:3.8em}
+.how{font-size:8px;line-height:1.9;color:var(--muted);margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&lt; Back to Wimbledon Common</a>
+  <header class="box sign">
+    <canvas id="me" width="12" height="17" aria-label="Will in his cap and sunglasses"></canvas>
+    <div>
+      <h1>Will's Brick Box</h1>
+      <p>Grab some bricks and build something fun.</p>
+    </div>
+  </header>
+
+  <section class="box">
+    <div class="work">
+      <canvas id="plate" aria-label="Brick building baseplate"></canvas>
+      <div class="tools">
+        <div><p class="lbl">BUILD</p><div class="row" id="models"></div></div>
+        <div><p class="lbl">BRICK SIZE</p><div class="row" id="sizes"></div></div>
+        <div><p class="lbl">COLOUR</p><div class="row" id="cols"></div></div>
+        <div class="row"><button class="btn" id="undo" type="button">UNDO</button><button class="btn" id="clear" type="button">CLEAR</button></div>
+        <p class="msg" id="msg" aria-live="polite">Free build. Tap the baseplate to drop a brick.</p>
+      </div>
+    </div>
+    <p class="how">Bricks drop down and land on whatever is underneath. Pick a model to get a faint guide to build over, or free build whatever you like.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+// ---- Will sprite ----
+const WILL=["...KKKKKK...","..KCCCCCCK..",".KCCCCCCCCK.","KccccccccccK",".KKKKSSKKKK.",".KKGKSSKGKK.",".KSSSSSSSSK.",".KSSSWWSSSK.","..KKSSSSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKSK","..KPPPPPPK..","..KSSKKSSK..","..KYYKKYYK..","..KOOKKOOK.."];
+const WP={K:'#151515',W:'#fff',C:'#d98a7a',c:'#b86a5c',G:'#7aa8d8',S:'#f2c4a0',T:'#4a4a4a',P:'#6f86a8',Y:'#d9a12a',O:'#6a5a4a'};
+const mc=document.getElementById('me').getContext('2d');
+WILL.forEach((r,j)=>{for(let i=0;i<12;i++){const c=WP[r[i]];if(c){mc.fillStyle=c;mc.fillRect(i,j,1,1)}}});
+
+// ---- brick world ----
+const COLS=16,ROWS=13,CELL=24,STUD=6;
+const cv=document.getElementById('plate'),c=cv.getContext('2d');
+cv.width=COLS*CELL;cv.height=ROWS*CELL+14;
+const PAL={R:'#d23a32',Y:'#f2c230',B:'#2f6fc4',G:'#3a9a48',W:'#f4f4f0',K:'#2a2a2e',O:'#ec8a2a',N:'#7a4a2a',P:'#e88ab8',L:'#8fd0f0'};
+const COLOURS=['R','Y','B','G','W','K','O','N','P','L'];
+let colour='R',size=2;
+let bricks=[];           // {x,y,w,c}  y=0 is the bottom row
+let occ=[];              // occ[y][x] = colour letter or null
+function rebuild(){occ=Array.from({length:ROWS},()=>Array(COLS).fill(null));bricks.forEach(b=>{for(let i=0;i<b.w;i++)occ[b.y][b.x+i]=b.c})}
+function top(x){for(let y=ROWS-1;y>=0;y--)if(occ[y][x])return y+1;return 0}
+function landing(x,w){let y=0;for(let i=0;i<w;i++)y=Math.max(y,top(x+i));return y}
+
+// models: rows listed top to bottom; '.' empty
+const MODELS={
+  duck:{name:'DUCK',rows:[
+   "................",
+   "......YYY.......",
+   "......YKYOO.....",
+   "......YYYY......",
+   "..YYYYYYYYY.....",
+   ".YYYYYYYYYY.....",
+   "..YYYYYYYY......",
+   "BBBBBBBBBBBBBBBB"]},
+  house:{name:'HOUSE',rows:[
+   "..........KK....",
+   "......RR..KK....",
+   ".....RRRRRRR....",
+   "....RRRRRRRRR...",
+   "...RRRRRRRRRRR..",
+   "...WWWWWWWWWW...",
+   "...WLLWWWWLLW...",
+   "...WLLWNNWLLW...",
+   "...WWWWNNWWWW...",
+   "GGGGGGGGGGGGGGGG"]},
+  rocket:{name:'ROCKET',rows:[
+   ".......RR.......",
+   "......RRRR......",
+   "......WWWW......",
+   "......WLLW......",
+   "......WLLW......",
+   "......WWWW......",
+   "......WWWW......",
+   ".....RWWWWR.....",
+   "....RRWWWWRR....",
+   "....RR.OO.RR....",
+   "KKKKKKKKKKKKKKKK"]},
+  mill:{name:'WINDMILL',rows:[
+   "......WW........",
+   "......WW........",
+   "......WW........",
+   "...WWWWWWWW.....",
+   "......NN........",
+   ".....NNNN.......",
+   "......WW........",
+   ".....NNNN.......",
+   ".....NKKN.......",
+   ".....NKKN.......",
+   "GGGGGGGGGGGGGGGG"]}
+};
+let model=null;
+function target(){if(!model)return null;const r=MODELS[model].rows,t=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  r.forEach((row,j)=>{const y=r.length-1-j;for(let x=0;x<COLS;x++)if(row[x]!=='.')t[y][x]=row[x]});return t}
+
+let hover=null;
+function draw(){
+  c.fillStyle='#cfe6f5';c.fillRect(0,0,cv.width,cv.height);
+  // clouds
+  c.fillStyle='#e9f4fb';c.fillRect(30,20,60,12);c.fillRect(42,12,30,10);c.fillRect(250,34,70,12);c.fillRect(266,26,32,10);
+  // baseplate
+  const by=ROWS*CELL;c.fillStyle='#3a9a48';c.fillRect(0,by,cv.width,14);
+  c.fillStyle='#4fb35e';for(let x=0;x<COLS;x++)c.fillRect(x*CELL+(CELL-STUD*2)/2,by-0,STUD*2,4);
+  // guide
+  const t=target();
+  if(t){for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(t[y][x]&&!occ[y][x]){const X=x*CELL,Y=(ROWS-1-y)*CELL;
+    c.globalAlpha=.28;c.fillStyle=PAL[t[y][x]];c.fillRect(X+1,Y+1,CELL-2,CELL-2);c.globalAlpha=1;
+    c.strokeStyle='rgba(0,0,0,.25)';c.setLineDash([3,3]);c.strokeRect(X+1.5,Y+1.5,CELL-3,CELL-3);c.setLineDash([])}}
+  // bricks
+  bricks.forEach(b=>brick(b.x,b.y,b.w,PAL[b.c],1));
+  // ghost
+  if(hover){const y=landing(hover,size);if(y<ROWS){c.globalAlpha=.5;brick(hover,y,size,PAL[colour],0);c.globalAlpha=1}}
+}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;r=Math.min(255,r*f)|0;g=Math.min(255,g*f)|0;b=Math.min(255,b*f)|0;return `rgb(${r},${g},${b})`}
+function brick(x,y,w,col,studs){
+  const X=x*CELL,Y=(ROWS-1-y)*CELL,Wd=w*CELL;
+  c.fillStyle=col;c.fillRect(X,Y+4,Wd,CELL-4);
+  c.fillStyle=shade(col,1.18);c.fillRect(X,Y+4,Wd,3);
+  c.fillStyle=shade(col,.72);c.fillRect(X,Y+CELL-3,Wd,3);
+  c.strokeStyle='rgba(0,0,0,.55)';c.lineWidth=1;c.strokeRect(X+.5,Y+4.5,Wd-1,CELL-5);
+  // studs on top where nothing sits above
+  for(let i=0;i<w;i++){if(y+1<ROWS&&occ[y+1]&&occ[y+1][x+i]&&studs)continue;
+    const sx=X+i*CELL+(CELL-STUD*2)/2;c.fillStyle=col;c.fillRect(sx,Y,STUD*2,5);c.fillStyle=shade(col,1.2);c.fillRect(sx,Y,STUD*2,2);c.strokeStyle='rgba(0,0,0,.45)';c.strokeRect(sx+.5,Y+.5,STUD*2-1,5)}
+}
+
+let ac=null;function clack(f){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.5,t+.06);g.gain.setValueAtTime(.03,t);g.gain.exponentialRampToValueAtTime(.0001,t+.08);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.1)}catch(e){}}
+
+const msg=document.getElementById('msg');
+function colAt(e){const r=cv.getBoundingClientRect();const x=Math.floor((e.clientX-r.left)/r.width*COLS);return Math.max(0,Math.min(COLS-size,x-Math.floor((size-1)/2)))}
+cv.addEventListener('pointermove',e=>{hover=colAt(e);draw()});
+cv.addEventListener('pointerleave',()=>{hover=null;draw()});
+cv.addEventListener('pointerdown',e=>{
+  const x=colAt(e),y=landing(x,size);
+  if(y>=ROWS){msg.textContent='That stack is as tall as it goes.';return}
+  bricks.push({x,y,w:size,c:colour});rebuild();clack(420+Math.random()*60);
+  if(e.pointerType!=='mouse')hover=null;
+  check();draw();
+});
+function check(){
+  const t=target();
+  if(!t){msg.textContent=bricks.length+(bricks.length===1?' brick':' bricks')+' placed. Keep going.';return}
+  let need=0,got=0,extra=0,colOk=0;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){if(t[y][x]){need++;if(occ[y][x]){got++;if(occ[y][x]===t[y][x])colOk++}}else if(occ[y][x])extra++}
+  if(got===need&&extra===0){msg.textContent=colOk===need?`You built the ${MODELS[model].name.toLowerCase()}! Perfect colours too.`:`You built the ${MODELS[model].name.toLowerCase()}! Your own colour scheme.`;clack(660);setTimeout(()=>clack(880),120)}
+  else msg.textContent=`${MODELS[model].name}: ${got} of ${need} studs filled`+(extra?`, ${extra} off the plan`:'')+'.';
+}
+
+// controls
+function pressGroup(el,btn){el.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===btn))}
+const sizesEl=document.getElementById('sizes');
+[1,2,3,4].forEach(n=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='1x'+n;b.setAttribute('aria-pressed',n===size);
+  b.onclick=()=>{size=n;pressGroup(sizesEl,b);draw()};sizesEl.appendChild(b)});
+const colsEl=document.getElementById('cols');
+COLOURS.forEach(k=>{const b=document.createElement('button');b.type='button';b.className='sw';b.style.background=PAL[k];b.setAttribute('aria-label','Brick colour');b.setAttribute('aria-pressed',k===colour);
+  b.onclick=()=>{colour=k;pressGroup(colsEl,b);draw()};colsEl.appendChild(b)});
+const modelsEl=document.getElementById('models');
+[['free','FREE BUILD'],...Object.keys(MODELS).map(k=>[k,MODELS[k].name])].forEach(([k,label])=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=label;b.setAttribute('aria-pressed',k==='free');
+  b.onclick=()=>{model=k==='free'?null:k;pressGroup(modelsEl,b);bricks=[];rebuild();
+    msg.textContent=model?`Build the ${MODELS[model].name.toLowerCase()} over the faint guide.`:'Free build. Tap the baseplate to drop a brick.';draw()};modelsEl.appendChild(b)});
+document.getElementById('undo').onclick=()=>{bricks.pop();rebuild();check();draw()};
+document.getElementById('clear').onclick=()=>{bricks=[];rebuild();check();draw()};
+rebuild();draw();
+})();
+</script>
+</body>
+</html>
