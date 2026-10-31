@@ -5,6 +5,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
 <style>
+*{-webkit-tap-highlight-color:transparent}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 /* Layout: a cosy pixel craft studio. Lauren in the doorway up top; three stations as tabs below: an embroidery hoop, a pottery-painting table and a cocktail bar. Single warm look, soft blues from her dress. */
 :root{
   --wall:#f4e9de;
@@ -159,7 +161,7 @@ function stitchAt(e){const p=pointerXY(hoop,e,hoop.width,hoop.height),x=Math.flo
   if(x<0||y<0||x>=G||y>=G)return;const dx=x-(G-1)/2,dy=y-(G-1)/2;if(dx*dx+dy*dy>(G/2-0.6)**2)return;
   if(stitching===null)stitching=grid[y][x]===thread()?'unpick':'stitch';
   const v=stitching==='unpick'?null:thread();if(grid[y][x]!==v){grid[y][x]=v;tone(stitching==='unpick'?300:700+Math.random()*80,.04,.02);drawHoop()}}
-hoop.addEventListener('pointerdown',e=>{stitching=null;hoop.setPointerCapture(e.pointerId);stitchAt(e)});
+hoop.addEventListener('pointerdown',e=>{e.preventDefault();stitching=null;hoop.setPointerCapture(e.pointerId);stitchAt(e)});
 hoop.addEventListener('pointermove',e=>{if(e.buttons)stitchAt(e)});
 hoop.addEventListener('pointerup',()=>stitching=null);
 document.getElementById('clearH').addEventListener('click',()=>{grid.forEach(r=>r.fill(null));drawHoop()});
@@ -196,7 +198,7 @@ function drawPot(){
 let last=null;
 function dab(e){if(fired)return;const p=pointerXY(pot,e,PW,PH);pl.fillStyle=glaze();pl.strokeStyle=glaze();pl.lineWidth=brush*2;pl.lineCap='round';
   pl.beginPath();if(last){pl.moveTo(last.x,last.y);pl.lineTo(p.x,p.y);pl.stroke()}else{pl.arc(p.x,p.y,brush,0,Math.PI*2);pl.fill()}last=p;drawPot()}
-pot.addEventListener('pointerdown',e=>{last=null;pot.setPointerCapture(e.pointerId);dab(e)});
+pot.addEventListener('pointerdown',e=>{e.preventDefault();last=null;pot.setPointerCapture(e.pointerId);dab(e)});
 pot.addEventListener('pointermove',e=>{if(e.buttons)dab(e)});
 pot.addEventListener('pointerup',()=>last=null);
 document.querySelectorAll('[data-shape]').forEach(b=>b.addEventListener('click',()=>{shape=b.dataset.shape;fired=false;pl.clearRect(0,0,PW,PH);document.getElementById('potNote').textContent='Freshly cast and ready to paint.';drawPot()}));
