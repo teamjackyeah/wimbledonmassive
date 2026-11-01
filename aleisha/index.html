@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aleisha's Aussie Zoo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#3a2a1c;--panel:#fbf3e3;--ink:#2a2018;--muted:#7a6a58;--accent:#e8a24a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.back{color:#e8d8c0;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+.sign{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:#e8a24a}
+.sign canvas{width:48px;height:68px;image-rendering:pixelated}
+h1{margin:0;font-weight:400;font-size:clamp(13px,3.4vw,22px);line-height:1.5}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:#4a3420}
+.pens{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.pen{font-family:var(--pixel);background:#fff;border:4px solid #000;padding:0;cursor:pointer;display:grid;color:var(--ink);text-align:left;-webkit-user-select:none;user-select:none}
+.pen canvas{width:100%;height:auto;image-rendering:pixelated;display:block;border-bottom:4px solid #000}
+.pen span{font-size:8px;padding:8px;line-height:1.6;display:flex;justify-content:space-between;gap:6px}
+.pen[aria-pressed="true"]{outline:4px solid var(--accent);outline-offset:2px}
+.pen:focus-visible{outline:4px solid #fff;outline-offset:2px}
+.pen:hover{transform:translateY(-2px)}
+.detail{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:start}
+@media (max-width:560px){.detail{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.detail canvas{width:160px;height:auto;image-rendering:pixelated;border:4px solid #000}
+.detail h2{margin:0;font-weight:400;font-size:13px;line-height:1.6}
+.detail .fact{font-size:9px;line-height:2;margin:8px 0 0}
+.foods{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:560px){.foods{justify-content:center}}
+.btn{font-family:var(--pixel);font-size:9px;background:#fff;color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:9px 10px;cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.feedmsg{font-size:9px;line-height:1.9;margin:10px 0 0;min-height:1.9em}
+.count{font-size:8px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&lt; Back to Wimbledon Common</a>
+  <header class="box sign">
+    <canvas id="me" width="12" height="17" aria-label="Aleisha in her cap, ready for feeding time"></canvas>
+    <div>
+      <h1>Aleisha's Aussie Zoo</h1>
+      <p class="sub">G'day! Tap an enclosure to meet the animal, then pick the right food to feed it.</p>
+    </div>
+  </header>
+  <section class="box">
+    <p class="count" id="count" style="margin:0 0 12px">Fed 0 of 8 animals</p>
+    <div class="pens" id="pens"></div>
+  </section>
+  <section class="box detail" id="detail" aria-live="polite">
+    <canvas id="big" width="24" height="22" aria-hidden="true"></canvas>
+    <div>
+      <h2 id="dName">Feeding time</h2>
+      <p class="fact" id="dFact">Pick an enclosure to start your keeper rounds.</p>
+      <div class="foods" id="foods"></div>
+      <p class="feedmsg" id="feedmsg"></p>
+    </div>
+  </section>
+</div>
+<script>
+(function(){
+// Aleisha
+const ME=["...KKKKKK...","..KCCCCCCK..",".KCGGCCGGCK.","KccccccccccK",".KHSSSSSSHK.",".KHSKSSKSHK.",".KYSSSSSSYK.",".KSSSWWSSSK.","..KKSSSSKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKWK","..KPPPPPPK..","..KSSKKSSK..","..KAAKKAAK..","..KWWKKWWK.."];
+const MP={K:'#151515',W:'#ffffff',C:'#6e5a52',c:'#efe2cf',G:'#8a4a1e',H:'#9a6a3e',S:'#f2c6a6',Y:'#e8c040',T:'#efe6d6',P:'#a8c4dc',A:'#b0b0b8'};
+const me=document.getElementById('me').getContext('2d');ME.forEach((r,j)=>{for(let i=0;i<12;i++){const c=MP[r[i]];if(c){me.fillStyle=c;me.fillRect(i,j,1,1)}}});
+
+const PAL={K:'#151515',W:'#ffffff',B:'#a0704a',b:'#e0bc96',G:'#9a9aa6',D:'#7a5a3a',P:'#8a5a34',g:'#4a4a52',N:'#7a5030',A:'#7a96b0',E:'#c8a070',S:'#3a2a1e',Q:'#b88a5a',q:'#e8cca8',U:'#3a86c8',R:'#e04848'};
+const A=[
+ {id:'roo',name:'Kangaroo',bg:'grass',food:'Grass',fact:'Red kangaroos can hop at over 50 km/h and cover around 8 m in a single bound. A group of kangaroos is called a mob.',
+  px:["..........KK....",".........KBBK...","........KBBBBK..","........KBKBBBK.","........KBBBBBBK",".......KBBBBKK..","......KBBBBK....",".....KBBbbBK....","....KBBBbbBK....","...KBBBBbBBK....","..KBBBBBBBBK....",".KBBK.KBBBBK....","KBK...KBBKBBK...","KK...KKKKKKKKK.."]},
+ {id:'koala',name:'Koala',bg:'tree',food:'Eucalyptus leaves',fact:'Koalas sleep for up to 20 hours a day, because their eucalyptus diet gives them very little energy. They are marsupials, not bears.',
+  px:["..KK......KK....",".KGGK....KGGK...",".KGWGKKKKGWGK...","..KGGGGGGGGK....","..KGKGGGGKGK....","..KGGGKKGGGK....","..KGGGKKGGGK....","...KGGGGGGK.....","..KGGGWWGGGK....",".KGGGWWWWGGGK...",".KGGGWWWWGGGK...","NNNNNNNNNNNNNNNN","..KGGK..KGGK...."]},
+ {id:'wombat',name:'Wombat',bg:'grass',food:'Roots and grass',fact:'Wombats are the only animals known to produce cube-shaped poo. They stack it on rocks and logs to mark their territory.',
+  px:["....KK....KK....","...KDDK..KDDK...","..KDDDDKKDDDDK..","..KDKDDDDDDKDK..","..KDDDDKKDDDDK..","..KDDDKKKKDDDK..",".KDDDDDDDDDDDDK.","KDDDDDDDDDDDDDDK","KDDDDDDDDDDDDDDK","KDDDDDDDDDDDDDDK",".KDDK.KKKK.KDDK.",".KKK........KKK."]},
+ {id:'platypus',name:'Platypus',bg:'water',food:'Worms and shrimp',fact:'Platypuses lay eggs, find food by sensing electric fields with their bills, and their fur glows blue-green under UV light.',
+  px:["....KKKKKKK.....","..KKPPPPPPPKK...",".KPPPPPPPPKPPKKK","KPPPPPPPPPPPPggK","KPPPPPPPPPPPKggK",".KPPPPPPPPPPKKK..","..KKPKKKKPKK....","....K....K......"]},
+ {id:'kooka',name:'Kookaburra',bg:'tree',food:'Lizards and insects',fact:'The kookaburra\'s famous laugh is a territorial call, often done as a family chorus at dawn and dusk. It is the world\'s largest kingfisher.',
+  px:["....KKKKK.......","...KWWWWWK......","..KWWDKWWWKKKK..","..KWDDDWWWggggK.","..KWWWWWWWKKKK..","...KWWWWWK......","...KDDWWWK......","..KDUDWWWK......","..KDUUDWWK......","..KDDUDWWK......","...KDDDDK.......","....KDDK........","NNNNNNNNNNNNNNNN"]},
+ {id:'emu',name:'Emu',bg:'grass',food:'Fruit and seeds',fact:'Emus are the second-largest birds in the world and can run at around 50 km/h. The dads sit on the eggs and raise the chicks.',
+  px:["........KKKK....",".......KAAKAKK..","........KAAK....","........KAK.....","........KAK.....","........KAK.....","....KKKKKSK.....","..KKSSSSSSSK....",".KSSSSSSSSSSK...",".KSSSSSSSSSSK...","..KKSSSSSSKK....","....KAK.KAK.....","....KAK.KAK.....","...KKK.KKK......"]},
+ {id:'quokka',name:'Quokka',bg:'grass',food:'Leaves',fact:'Quokkas live mainly on Rottnest Island off Western Australia, and the shape of their mouths makes them look like they are always smiling.',
+  px:["...KK....KK.....","..KQQK..KQQK....","..KQQQKKQQQK....",".KQQQQQQQQQQK...",".KQKQQQQQQKQK...",".KQQQQKKQQQQK...",".KQQQKQQKQQQK...","..KQQQQQQQQK....",".KQQQQqqQQQQK...","KQQQQqqqqQQQQK..","KQQQQqqqqQQQQK..",".KQQQQQQQQQQK...","..KQQK..KQQK...."]},
+ {id:'echidna',name:'Echidna',bg:'sand',food:'Ants and termites',fact:'Echidnas are one of only a few mammals that lay eggs. A baby echidna is called a puggle.',
+  px:["....K.K.K.K.....","...KSKSKSKSK....","..KSSSSSSSSSK...",".KSSSSSSSSSSSK..",".KSSSSSSSSSSEKK.","KSSSSSSSSSEKEEEK","KSSSSSSSSSSEEKKK",".KEEEEEEEEEEK...","..KEK..KEK......"]}
+];
+// echidna spines need a lighter tip so they read as spines
+PAL.S='#3a2a1e';
+const FOODS=['Grass','Eucalyptus leaves','Roots and grass','Worms and shrimp','Lizards and insects','Fruit and seeds','Leaves','Ants and termites'];
+const BG={grass:['#a8d8f0','#7cc06a','#5aa84a'],tree:['#a8d8f0','#a8d8f0','#5aa84a'],water:['#a8d8f0','#d8c08a','#4a90c8'],sand:['#f0d8a8','#e0c088','#d0a868']};
+
+let fed=new Set();try{JSON.parse(localStorage.getItem('aussiezoo')||'[]').forEach(x=>fed.add(x))}catch(e){}
+function scene(c,a,t,hearts){
+  const W=24,H=22,b=BG[a.bg];c.fillStyle=b[0];c.fillRect(0,0,W,H);
+  if(a.bg==='tree'){c.fillStyle='#5aa84a';c.fillRect(0,18,W,4);c.fillStyle='#4a7a3a';c.fillRect(0,0,8,5);c.fillRect(16,0,8,4)}
+  else if(a.bg==='water'){c.fillStyle=b[1];c.fillRect(0,10,W,4);c.fillStyle=b[2];c.fillRect(0,14,W,8);c.fillStyle='#7ab8e0';c.fillRect(3,17,4,1);c.fillRect(14,19,5,1)}
+  else{c.fillStyle=b[1];c.fillRect(0,12,W,10);c.fillStyle=b[2];c.fillRect(0,20,W,2);c.fillStyle=b[2];c.fillRect(4,15,1,1);c.fillRect(18,14,1,1);c.fillRect(11,17,1,1)}
+  // sun
+  if(a.bg!=='tree'){c.fillStyle='#f6d04a';c.fillRect(19,2,3,3)}
+  const bob=Math.floor(t*1.6)%2,h=a.px.length,oy=(a.bg==='water'?16:a.bg==='tree'?18:20)-h+(a.bg==='water'?2:0);
+  a.px.forEach((r,j)=>{for(let i=0;i<r.length;i++){const col=PAL[r[i]];if(col){c.fillStyle=col;c.fillRect(i+4,j+oy-(r[i]==='N'?0:bob),1,1)}}});
+  if(a.id==='echidna'){c.fillStyle='#e0d0b0';for(let i=0;i<5;i++)c.fillRect(8+i*2,oy-bob,1,1)}
+  (hearts||[]).forEach(hh=>{const y=Math.round(hh.y);c.fillStyle='#e8628a';c.fillRect(hh.x,y,1,1);c.fillRect(hh.x+2,y,1,1);c.fillRect(hh.x,y+1,3,1);c.fillRect(hh.x+1,y+2,1,1)});
+}
+const pens=document.getElementById('pens'),penCanvases=[];
+A.forEach(a=>{const b=document.createElement('button');b.type='button';b.className='pen';b.setAttribute('aria-label',a.name);
+  const cv=document.createElement('canvas');cv.width=24;cv.height=22;b.appendChild(cv);
+  const s=document.createElement('span');s.innerHTML=`<b style="font-weight:400">${a.name}</b><i style="font-style:normal" data-fed></i>`;b.appendChild(s);
+  b.onclick=()=>pick(a,b);pens.appendChild(b);penCanvases.push({a,c:cv.getContext('2d'),tag:s.querySelector('[data-fed]')})});
+let cur=null,hearts=[];
+function marks(){penCanvases.forEach(p=>p.tag.textContent=fed.has(p.a.id)?'FED':'');document.getElementById('count').textContent=`Fed ${fed.size} of ${A.length} animals`+(fed.size===A.length?'. Keeper of the year!':'')}
+function shuffle(x){for(let i=x.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[x[i],x[j]]=[x[j],x[i]]}return x}
+function tone(f,d,v,delay){try{window.__ac=window.__ac||new (window.AudioContext||window.webkitAudioContext)();const ac=window.__ac,t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.04,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+function pick(a,btn){
+  cur=a;hearts=[];pens.querySelectorAll('.pen').forEach(x=>x.setAttribute('aria-pressed',x===btn));
+  document.getElementById('dName').textContent=a.name;document.getElementById('dFact').textContent=a.fact;
+  const msg=document.getElementById('feedmsg');msg.textContent=fed.has(a.id)?'Already fed today, but it won\'t say no to seconds.':'What does it eat?';
+  const opts=shuffle([a.food,...shuffle(FOODS.filter(f=>f!==a.food&&!(a.food.includes('rass')&&f.includes('rass')))).slice(0,2)]);
+  const fd=document.getElementById('foods');fd.innerHTML='';
+  opts.forEach(o=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=o;
+    b.onclick=()=>{if(o===a.food){fed.add(a.id);try{localStorage.setItem('aussiezoo',JSON.stringify([...fed]))}catch(e){}
+        msg.textContent=`Yum! The ${a.name.toLowerCase()} loved that.`;for(let i=0;i<5;i++)hearts.push({x:6+Math.random()*12|0,y:14+Math.random()*4,v:2+Math.random()*2});
+        tone(660,.12,.04);tone(880,.18,.04,.12);marks()}
+      else{msg.textContent='Not keen on that one. Try something else.';tone(260,.18,.03)}};
+    fd.appendChild(b)});
+  tone(520,.08,.03);
+  if(innerWidth<700)document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+const big=document.getElementById('big').getContext('2d');
+let last=performance.now(),t=0;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;t+=dt;
+  hearts.forEach(h=>h.y-=h.v*dt);hearts=hearts.filter(h=>h.y>-3);
+  penCanvases.forEach(p=>scene(p.c,p.a,reduced?0:t));
+  if(cur)scene(big,cur,reduced?0:t,hearts);else scene(big,A[0],reduced?0:t);
+  requestAnimationFrame(loop)}
+marks();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
