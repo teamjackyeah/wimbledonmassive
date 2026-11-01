@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Periodic Table of Cats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#22213a;--panel:#f6f1e7;--ink:#211d2b;--muted:#6f6878;--accent:#d9b47a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.wrap>*{min-width:0}
+.back{color:#cfc8e6;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+h1{margin:0;font-weight:400;font-size:clamp(13px,3.4vw,22px);line-height:1.5}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+.btn{font-family:var(--pixel);font-size:10px;background:var(--accent);color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:11px 14px;cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.game{display:block;width:100%;max-width:640px;margin-left:auto;margin-right:auto;height:auto;image-rendering:pixelated;border:3px solid #000;touch-action:manipulation}
+
+.top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.scroll{overflow-x:auto;margin-top:12px;padding:14px 4px 8px;-webkit-overflow-scrolling:touch}
+.pt{display:grid;grid-template-columns:repeat(18,minmax(40px,1fr));gap:4px;min-width:780px}
+.el{position:relative;aspect-ratio:1;border:3px solid #000;font-family:var(--pixel);cursor:pointer;padding:0;display:grid;place-items:center;color:#211d2b;background:var(--c)}
+.el::before,.el::after{content:"";position:absolute;top:-9px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #000}
+.el::before{left:3px}.el::after{right:3px}
+.el .n{position:absolute;top:3px;left:4px;font-size:6px}
+.el .s{font-size:11px;margin-top:6px}
+.el[data-seen="1"] .n::after{content:" *"}
+.el:hover{transform:translateY(-2px)}
+.el:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.el[aria-pressed="true"]{box-shadow:0 0 0 3px #fff}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:7px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border:2px solid #000;vertical-align:middle;margin-right:4px}
+.detail{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center}
+@media (max-width:520px){.detail{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.detail canvas{width:120px;height:120px;image-rendering:pixelated;border:3px solid #000;background:#fff}
+.detail h2{margin:0;font-weight:400;font-size:13px;line-height:1.6}
+.detail .real{font-size:8px;color:var(--muted);margin:6px 0 0;line-height:1.8}
+.detail .fact{font-size:9px;line-height:2;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">&lt; Back to Ciara's Lab</a>
+  <section class="box">
+    <div class="top"><h1>The Periodic Table of Cats</h1><p class="sub" id="count">Met 0 of 36 cats</p></div>
+    <p class="sub">Tap a cat to meet it. On a phone, swipe sideways to see the whole table.</p>
+    <div class="scroll"><div class="pt" id="pt"></div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+  <section class="box detail" id="detail" aria-live="polite">
+    <canvas id="big" width="24" height="24" aria-hidden="true"></canvas>
+    <div><h2 id="dName">Pick a cat</h2><p class="real" id="dReal">Every element has a cat. Every cat has a real fact.</p><p class="fact" id="dFact"></p></div>
+  </section>
+</div>
+<script>
+const CIARA=["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.","KHSSSSSSSSHK","KHKKKSSKKKHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTBSK","KSKTTTTTBKSK","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const CIARA_PAL={K:'#151515',W:'#ffffff',H:'#d9b47a',h:'#b8924f',S:'#f3cfb4',T:'#efe6d6',B:'#8a5530',P:'#5f87b8',O:'#d8c8a8'};
+function drawCiara(cv){const c=cv.getContext('2d');CIARA.forEach((r,j)=>{for(let i=0;i<12;i++){const col=CIARA_PAL[r[i]];if(col){c.fillStyle=col;c.fillRect(i,j,1,1)}}})}
+let __ac=null;function tone(f,d,v,delay,type){try{__ac=__ac||new (window.AudioContext||window.webkitAudioContext)();const t=__ac.currentTime+(delay||0),o=__ac.createOscillator(),g=__ac.createGain();o.type=type||'triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.04,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(__ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+
+(function(){
+const CAT={alkali:'#f2a07a',earth:'#f6d27a',trans:'#e6b8c8',post:'#b8d8b0',metalloid:'#a8d8d0',non:'#cde7f7',halogen:'#d8c8f2',noble:'#f7e0f0'};
+const CATN={alkali:'Alkali metal',earth:'Alkaline earth',trans:'Transition metal',post:'Post-transition metal',metalloid:'Metalloid',non:'Non-metal',halogen:'Halogen',noble:'Noble gas'};
+// [number, symbol, real name, cat name, group(column), period(row), category, fact]
+const E=[
+[1,'H','Hydrogen','Hiss-drogen',1,1,'non','The lightest element. Roughly three quarters of all the ordinary matter in the universe is hydrogen.'],
+[2,'He','Helium','Meow-lium',18,1,'noble','Sound travels faster through helium than air, which is why it makes your voice squeaky.'],
+[3,'Li','Lithium','Litter-ium',1,2,'alkali','The lightest metal. Soft enough to cut with a knife, and inside most rechargeable batteries.'],
+[4,'Be','Beryllium','Bery-purr-ium',2,2,'earth','Light and very stiff. The James Webb Space Telescope mirrors are made of gold-coated beryllium.'],
+[5,'B','Boron','Bored-on',13,2,'metalloid','Boron goes into borosilicate glass, the heat-proof kind used for lab glassware.'],
+[6,'C','Carbon','Purr-bon',14,2,'non','Diamond and pencil graphite are both pure carbon, just arranged differently.'],
+[7,'N','Nitrogen','Nap-trogen',15,2,'non','Makes up about 78% of the air you breathe.'],
+[8,'O','Oxygen','Ox-kitten',16,2,'non','The most abundant element in the Earth\'s crust by mass. Liquid oxygen is pale blue.'],
+[9,'F','Fluorine','Floof-orine',17,2,'halogen','The most reactive element of all. Fluoride in toothpaste helps harden tooth enamel.'],
+[10,'Ne','Neon','Neon Tabby',18,2,'noble','Neon glows red-orange in a sign. Other colours of "neon" sign use different gases.'],
+[11,'Na','Sodium','Sodi-yum',1,3,'alkali','A soft metal that reacts violently with water. Half of table salt.'],
+[12,'Mg','Magnesium','Meowgnesium',2,3,'earth','Burns with a brilliant white light, and sits at the centre of chlorophyll in every green leaf.'],
+[13,'Al','Aluminium','Alley-cat-ium',13,3,'post','The most abundant metal in the Earth\'s crust, yet it was once so hard to extract it was prized like silver.'],
+[14,'Si','Silicon','Siamese-licon',14,3,'metalloid','The second most abundant element in the Earth\'s crust, and the heart of computer chips.'],
+[15,'P','Phosphorus','Paws-phorus',15,3,'non','Discovered in 1669 by Hennig Brand, who got it by boiling down urine. White phosphorus glows in the dark.'],
+[16,'S','Sulfur','Sulk-fur',16,3,'non','Pure sulfur is a yellow solid with little smell. The rotten-egg smell is hydrogen sulfide.'],
+[17,'Cl','Chlorine','Claw-rine',17,3,'halogen','Used to keep swimming pools clean, and the other half of table salt.'],
+[18,'Ar','Argon','Ar-gone',18,3,'noble','About 1% of the air. Its name comes from the Greek for "lazy", because it barely reacts. Very cat.'],
+[19,'K','Potassium','Pawtassium',1,4,'alkali','Bananas are a good source. Drop it in water and it burns with a lilac flame.'],
+[20,'Ca','Calcium','Cat-cium',2,4,'earth','The most abundant metal in your body, mostly in your bones and teeth.'],
+[21,'Sc','Scandium','Scratch-andium',3,4,'trans','A pinch in aluminium makes strong, light alloys used in some bike frames.'],
+[22,'Ti','Titanium','Kitty-tanium',4,4,'trans','About as strong as many steels but around 45% lighter. Used in hip replacements.'],
+[23,'V','Vanadium','Vet-nadium',5,4,'trans','Added to steel to make tough tools. Look for "chrome vanadium" on a spanner.'],
+[24,'Cr','Chromium','Chrome-mew',6,4,'trans','Traces of chromium give rubies their red and emeralds their green.'],
+[25,'Mn','Manganese','Mane-ganese',7,4,'trans','Essential for making steel. Lumpy manganese nodules cover parts of the deep ocean floor.'],
+[26,'Fe','Iron','Fe-line',8,4,'trans','Most of the Earth\'s core is iron, and it carries oxygen round your blood in haemoglobin.'],
+[27,'Co','Cobalt','Co-bolt',9,4,'trans','Gives cobalt-blue glass and pottery its colour. Co-bolt is the cat doing zoomies.'],
+[28,'Ni','Nickel','Nick-kitten',10,4,'trans','The Earth\'s core is mostly iron with a good share of nickel.'],
+[29,'Cu','Copper','Cu-ddles',11,4,'trans','The Statue of Liberty is copper. It turned green as a patina formed on its surface.'],
+[30,'Zn','Zinc','Zzz-inc',12,4,'trans','Coating steel in zinc (galvanising) stops it rusting.'],
+[31,'Ga','Gallium','Gallop-ium',13,4,'post','Melts at about 30 °C, so a lump of it will melt in your hand.'],
+[32,'Ge','Germanium','Germ-meow-nium',14,4,'metalloid','Mendeleev predicted it, as "eka-silicon", years before anyone found it.'],
+[33,'As','Arsenic','As-leep',15,4,'metalloid','A famous poison. Some Victorian green wallpapers were coloured with arsenic pigments.'],
+[34,'Se','Selenium','Snooze-lenium',16,4,'non','Brazil nuts are unusually rich in selenium, so a couple goes a long way.'],
+[35,'Br','Bromine','Brrr-omine',17,4,'halogen','One of only two elements that are liquid at room temperature. The other is mercury.'],
+[36,'Kr','Krypton','Kryp-tom',18,4,'noble','From 1960 to 1983 the metre was officially defined by the light given off by krypton.']
+];
+const pt=document.getElementById('pt');let seen=new Set();
+try{(JSON.parse(localStorage.getItem('ptcats')||'[]')).forEach(n=>seen.add(n))}catch(e){}
+E.forEach(e=>{const b=document.createElement('button');b.type='button';b.className='el';b.style.setProperty('--c',CAT[e[6]]);b.style.gridColumn=e[4];b.style.gridRow=e[5];
+  b.innerHTML=`<span class="n">${e[0]}</span><span class="s">${e[1]}</span>`;b.setAttribute('aria-label',`${e[3]}, ${e[2]}`);if(seen.has(e[0]))b.dataset.seen='1';
+  b.onclick=()=>show(e,b);pt.appendChild(b)});
+const lg=document.getElementById('legend');Object.keys(CAT).forEach(k=>{const s=document.createElement('span');s.innerHTML=`<i style="background:${CAT[k]}"></i>${CATN[k]}`;lg.appendChild(s)});
+function count(){document.getElementById('count').textContent=`Met ${seen.size} of ${E.length} cats`}
+count();
+const FACE=["....KK......KK....","...KPPK....KPPK...","...KPPK....KPPK...","..KGGGGKKKKGGGGK..","..KGGGGGGGGGGGGK..",".KGGGGGGGGGGGGGGK.",".KGGKKGGGGGGKKGGK.",".KGGKWKGGGGKWKGGK.",".KGGKKGGGGGGKKGGK.",".KGGGGGGPPGGGGGGK.","KKGGGGGGKKGGGGGGKK",".KGGGGGKGGKGGGGGK.","KKGGGGGGGGGGGGGGKK","..KGGGGGGGGGGGGK..","...KKGGGGGGGGKK...",".....KKKKKKKK....."];
+function show(e,b){
+  pt.querySelectorAll('.el').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  seen.add(e[0]);b.dataset.seen='1';try{localStorage.setItem('ptcats',JSON.stringify([...seen]))}catch(err){}count();
+  document.getElementById('dName').textContent=`${e[1]} - ${e[3]}`;
+  document.getElementById('dReal').textContent=`${e[2]}, element ${e[0]}. ${CATN[e[6]]}.`;
+  document.getElementById('dFact').textContent=e[7];
+  const cv=document.getElementById('big'),c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,24,24);
+  const fur=CAT[e[6]],pal={K:'#151515',G:fur,P:'#e88aa8',W:'#ffffff'};
+  FACE.forEach((r,j)=>{for(let i=0;i<r.length;i++){const col=pal[r[i]];if(col){c.fillStyle=col;c.fillRect(i+3,j+4,1,1)}}});
+  tone(500+e[0]*12,.12,.035);
+  if(innerWidth<700)document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+})();
+</script>
+</body>
+</html>
