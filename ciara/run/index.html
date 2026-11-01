@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cat-alyst Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#22213a;--panel:#f6f1e7;--ink:#211d2b;--muted:#6f6878;--accent:#d9b47a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.wrap>*{min-width:0}
+.back{color:#cfc8e6;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+h1{margin:0;font-weight:400;font-size:clamp(13px,3.4vw,22px);line-height:1.5}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+.btn{font-family:var(--pixel);font-size:10px;background:var(--accent);color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:11px 14px;cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.game{display:block;width:100%;max-width:640px;margin-left:auto;margin-right:auto;height:auto;image-rendering:pixelated;border:3px solid #000;touch-action:manipulation}
+
+.top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.stage{position:relative}
+.panel{position:absolute;inset:0;display:grid;place-items:center;background:rgba(246,241,231,.94);border:3px solid #000;padding:12px;text-align:center}
+.panel div{display:grid;gap:12px;justify-items:center;max-width:460px}
+.panel h2{margin:0;font-weight:400;font-size:12px;line-height:1.6}
+.panel p{margin:0;font-size:8px;line-height:1.9;color:var(--muted)}
+.recipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.recipes div{font-size:8px;line-height:1.8;background:#fff;border:3px solid #000;padding:8px}
+.recipes b{font-weight:400;color:#7a4f9e}
+.msg{font-size:9px;line-height:1.8;min-height:1.8em;margin:10px 0 0;text-align:center}
+.controls{display:flex;justify-content:center;margin-top:10px}
+#jump{min-width:60%;font-size:12px;padding:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">&lt; Back to Ciara's Lab</a>
+  <section class="box">
+    <div class="top"><h1>Cat-alyst Run</h1><p class="sub">400 m. Tap or press space to jump.</p></div>
+    <div class="stage" style="margin-top:12px">
+      <canvas class="game" id="cv" width="320" height="180" aria-label="Cat running race"></canvas>
+      <div class="panel" id="startP"><div>
+        <h2>On your marks</h2>
+        <p>Your cat runs by itself. Run through the element tiles on the track to collect them, or jump to grab the ones in the air. Jump over the ones you don't want.</p>
+        <button class="btn" id="go" type="button">START</button>
+      </div></div>
+      <div class="panel" id="endP" hidden><div>
+        <h2 id="endT">Finished!</h2>
+        <p id="endM"></p>
+        <button class="btn" id="again" type="button">RUN AGAIN</button>
+      </div></div>
+    </div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="controls"><button class="btn" id="jump" type="button">JUMP</button></div>
+    <div class="recipes">
+      <div><b>H + H + O</b><br>Water. Hydrated, speed up.</div>
+      <div><b>O + O</b><br>Oxygen. Second wind.</div>
+      <div><b>C + O + O</b><br>CO2. Fizzy pop, small boost.</div>
+      <div><b>Na + Cl</b><br>Salt. Thirsty cat, slows down.</div>
+    </div>
+    <p class="sub" style="margin-top:10px">The flask holds three. If nothing reacts, it fizzles out and empties.</p>
+  </section>
+</div>
+<script>
+const CIARA=["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.","KHSSSSSSSSHK","KHKKKSSKKKHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTBSK","KSKTTTTTBKSK","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const CIARA_PAL={K:'#151515',W:'#ffffff',H:'#d9b47a',h:'#b8924f',S:'#f3cfb4',T:'#efe6d6',B:'#8a5530',P:'#5f87b8',O:'#d8c8a8'};
+function drawCiara(cv){const c=cv.getContext('2d');CIARA.forEach((r,j)=>{for(let i=0;i<12;i++){const col=CIARA_PAL[r[i]];if(col){c.fillStyle=col;c.fillRect(i,j,1,1)}}})}
+let __ac=null;function tone(f,d,v,delay,type){try{__ac=__ac||new (window.AudioContext||window.webkitAudioContext)();const t=__ac.currentTime+(delay||0),o=__ac.createOscillator(),g=__ac.createGain();o.type=type||'triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.04,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(__ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+
+(function(){
+const cv=document.getElementById('cv'),c=cv.getContext('2d');c.imageSmoothingEnabled=false;
+const W=320,H=180,GY=146,PXM=10,RACE=400,CATX=56;
+const EL={H:{c:'#e8f0ff',t:'#1d2a55'},O:{c:'#e05a5a',t:'#fff'},C:{c:'#55555e',t:'#fff'},Na:{c:'#b08ae0',t:'#fff'},Cl:{c:'#8fd06a',t:'#1d3a12'}};
+const BAG=['H','H','H','O','O','O','C','Na','Cl'];
+const RX=[
+ {need:['H','H','O'],name:'H2O',say:'Water! Hydrated, speeding up.',dv:5,t:3},
+ {need:['C','O','O'],name:'CO2',say:'CO2! Fizzy pop, little boost.',dv:3,t:2},
+ {need:['O','O'],name:'O2',say:'Oxygen! Second wind.',dv:4,t:2.5},
+ {need:['Na','Cl'],name:'NaCl',say:'Salt! Thirsty cat, slowing down.',dv:-4,t:3}
+];
+const msg=document.getElementById('msg');
+let st,running=false,last=0;
+function reset(){st={dist:0,time:0,base:8,fx:[],y:0,vy:0,tiles:[],nextAt:6,flask:[],made:[],anim:0,clouds:[[40,30],[170,20],[270,40]]};msg.textContent=''}
+function speed(){let v=st.base;st.fx.forEach(f=>v+=f.dv);return Math.max(3,v)}
+function jump(){if(!running)return;if(st.y===0){st.vy=230;tone(520,.08,.03)}}
+function same(a,b){if(a.length!==b.length)return false;const x=[...a].sort().join(),y=[...b].sort().join();return x===y}
+function collect(e){
+  st.flask.push(e);tone(660,.06,.03);
+  const r=RX.find(r=>same(r.need,st.flask));
+  if(r){st.fx.push({dv:r.dv,t:r.t});st.made.push(r.name);st.flask=[];msg.textContent=r.say;
+    if(r.dv>0){tone(784,.12,.04);tone(988,.18,.04,.1)}else{tone(300,.2,.04);tone(220,.25,.04,.12)}return}
+  if(st.flask.length>=3){msg.textContent='Fizzle. Nothing reacted, flask emptied.';st.flask=[];tone(240,.15,.03)}
+}
+function step(dt){
+  const v=speed();st.time+=dt;st.dist+=v*dt;st.anim+=dt*v*.9;
+  st.fx.forEach(f=>f.t-=dt);st.fx=st.fx.filter(f=>f.t>0);
+  if(st.y>0||st.vy>0){st.vy-=640*dt;st.y=Math.max(0,st.y+st.vy*dt);if(st.y===0)st.vy=0}
+  // spawn tiles
+  if(st.dist>=st.nextAt&&st.dist<RACE-12){const e=BAG[Math.random()*BAG.length|0];st.tiles.push({e,m:st.dist+30,air:Math.random()<.4});st.nextAt=st.dist+4+Math.random()*4}
+  // collisions: cat body box
+  const catTop=st.y+22,catBot=st.y;   // heights above ground
+  st.tiles.forEach(t=>{if(t.got)return;const x=CATX+(t.m-st.dist)*PXM;if(x<CATX-6||x>CATX+30)return;
+    const lo=t.air?40:2,hi=lo+14;if(catTop>lo&&catBot<hi){t.got=true;collect(t.e)}});
+  st.tiles=st.tiles.filter(t=>!t.got&&CATX+(t.m-st.dist)*PXM>-20);
+  if(st.dist>=RACE)finish();
+}
+function px(x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),w,h)}
+function draw(){
+  // sky and hills
+  px(0,0,W,H,'#bfe3f5');
+  st.clouds.forEach(cl=>{const x=((cl[0]-st.dist*1.2)%380+380)%380-40;px(x,cl[1],36,8,'#eef8fd');px(x+8,cl[1]-5,18,5,'#eef8fd')});
+  for(let i=0;i<6;i++){const x=((i*80-st.dist*3)%480+480)%480-80;px(x,104,90,26,'#8cc77a');px(x+18,94,54,10,'#8cc77a')}
+  px(0,118,W,12,'#6fb45e');
+  // track
+  px(0,130,W,30,'#c0563a');
+  for(let i=0;i<3;i++)px(0,136+i*8,W,1,'#e9e1d0');
+  px(0,160,W,20,'#5aa84a');
+  // distance markers
+  for(let m=Math.floor(st.dist/50)*50;m<st.dist+40;m+=50){const x=CATX+(m-st.dist)*PXM;if(m>0&&m<RACE){px(x,122,2,10,'#fff');c.fillStyle='#24361f';c.font='6px "Press Start 2P",monospace';c.fillText(m+'m',x-6,118)}}
+  // finish line
+  const fx=CATX+(RACE-st.dist)*PXM;if(fx<W+10){for(let j=0;j<6;j++)for(let k=0;k<2;k++)px(fx+k*4,130+j*5,4,5,(j+k)%2?'#151515':'#fff');px(fx-2,96,2,34,'#555');px(fx+8,96,2,34,'#555');px(fx-2,96,12,6,'#fff');}
+  // tiles
+  st.tiles.forEach(t=>{const x=CATX+(t.m-st.dist)*PXM,y=GY-(t.air?54:16);const e=EL[t.e];
+    px(x-1,y-1,16,16,'#151515');px(x,y,14,14,e.c);px(x,y,14,2,'rgba(255,255,255,.35)');c.fillStyle=e.t;c.font='6px "Press Start 2P",monospace';c.fillText(t.e,x+(t.e.length>1?1:4),y+10)});
+  cat(CATX,GY-st.y);
+  // HUD
+  px(4,4,96,26,'rgba(255,255,255,.8)');c.fillStyle='#211d2b';c.font='7px "Press Start 2P",monospace';
+  c.fillText(Math.min(RACE,Math.floor(st.dist))+'/'+RACE+'m',8,15);c.fillText(st.time.toFixed(1)+'s',8,26);
+  // flask
+  px(W-74,4,70,26,'rgba(255,255,255,.8)');c.fillStyle='#211d2b';c.font='5px "Press Start 2P",monospace';c.fillText('FLASK',W-70,12);
+  for(let i=0;i<3;i++){const e=st.flask[i],x=W-70+i*21,y=14;px(x,y,18,13,'#151515');px(x+1,y+1,16,11,e?EL[e].c:'#e9e4f2');if(e){c.fillStyle=EL[e].t;c.font='5px "Press Start 2P",monospace';c.fillText(e,x+(e.length>1?3:6),y+9)}}
+  if(st.fx.length){const up=st.fx.reduce((a,f)=>a+f.dv,0);c.fillStyle=up>0?'#2f7d4a':'#a03a2a';c.font='6px "Press Start 2P",monospace';c.fillText(up>0?'BOOST':'SLOW',108,15)}
+}
+function cat(x,y){
+  // grey tabby facing right, 2-frame legs; y is ground line under paws
+  const f=Math.floor(st.anim)%2,b=y-12;
+  const K='#151515',G='#8a8a96',D='#6c6c78',P='#e88aa8',Wt='#fff';
+  // tail
+  px(x-8,b-8,2,2,K);px(x-6,b-6,2,2,K);px(x-6,b-8,2,2,G);px(x-4,b-4,2,2,G);
+  // body
+  px(x-3,b-6,22,9,K);px(x-2,b-5,20,7,G);px(x+2,b-5,2,7,D);px(x+7,b-5,2,7,D);px(x+12,b-5,2,7,D);
+  // head
+  px(x+16,b-12,11,10,K);px(x+17,b-11,9,8,G);px(x+17,b-14,3,3,K);px(x+23,b-14,3,3,K);px(x+18,b-13,1,2,P);px(x+24,b-13,1,2,P);
+  px(x+19,b-9,2,2,K);px(x+23,b-9,2,2,K);px(x+19,b-9,1,1,Wt);px(x+23,b-9,1,1,Wt);px(x+22,b-6,2,1,P);
+  // legs
+  if(f===0){px(x-1,b+3,3,7,K);px(x+4,b+3,3,5,K);px(x+12,b+3,3,7,K);px(x+16,b+3,3,5,K)}
+  else{px(x+1,b+3,3,5,K);px(x+6,b+3,3,7,K);px(x+10,b+3,3,5,K);px(x+15,b+3,3,7,K)}
+}
+function loop(n){if(!running)return;const dt=Math.min(.05,(n-last)/1000);last=n;step(dt);draw();if(running)requestAnimationFrame(loop)}
+function start(){reset();running=true;document.getElementById('startP').hidden=true;document.getElementById('endP').hidden=true;last=performance.now();requestAnimationFrame(loop)}
+function finish(){running=false;st.dist=RACE;draw();
+  const t=st.time;let best=null;try{best=parseFloat(localStorage.getItem('catalyst-best'))}catch(e){}
+  const pb=!best||t<best;if(pb){try{localStorage.setItem('catalyst-best',t.toFixed(2))}catch(e){}}
+  document.getElementById('endT').textContent=`Finished in ${t.toFixed(2)}s`+(pb?' - a PB!':'');
+  const counts={};st.made.forEach(m=>counts[m]=(counts[m]||0)+1);
+  const list=Object.keys(counts).map(k=>`${k} x${counts[k]}`).join(', ');
+  document.getElementById('endM').textContent=(list?'Molecules made: '+list+'.':'No molecules made this time.')+(best&&!pb?` Best: ${best.toFixed(2)}s.`:'');
+  document.getElementById('endP').hidden=false;tone(660,.15,.04);tone(880,.15,.04,.15);tone(1100,.3,.04,.3);
+}
+document.getElementById('go').onclick=start;document.getElementById('again').onclick=start;
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();jump()});
+cv.addEventListener('pointerdown',e=>{e.preventDefault();jump()});
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(running)jump()}});
+reset();draw();
+})();
+</script>
+</body>
+</html>
