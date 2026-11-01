@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schrödinger's Parkrun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#22213a;--panel:#f6f1e7;--ink:#211d2b;--muted:#6f6878;--accent:#d9b47a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.wrap>*{min-width:0}
+.back{color:#cfc8e6;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+h1{margin:0;font-weight:400;font-size:clamp(13px,3.4vw,22px);line-height:1.5}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+.btn{font-family:var(--pixel);font-size:10px;background:var(--accent);color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:11px 14px;cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.game{display:block;width:100%;max-width:640px;margin-left:auto;margin-right:auto;height:auto;image-rendering:pixelated;border:3px solid #000;touch-action:manipulation}
+
+.top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.result{margin:12px 0 0;text-align:center;display:grid;gap:8px;min-height:70px}
+.result h2{margin:0;font-weight:400;font-size:12px;line-height:1.6}
+.result p{margin:0;font-size:9px;line-height:1.9;color:var(--muted)}
+.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.tally{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:8px;color:var(--muted);margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">&lt; Back to Ciara's Lab</a>
+  <section class="box">
+    <div class="top"><h1>Schr&ouml;dinger's Parkrun</h1><p class="sub">Saturday, 9am, start line.</p></div>
+    <canvas class="game" id="cv" width="320" height="170" aria-label="A box on a parkrun start line" style="margin-top:12px"></canvas>
+    <div class="result" aria-live="polite"><h2 id="rT">The cat is both running and not running.</h2><p id="rP">Until somebody opens the box.</p></div>
+    <div class="controls"><button class="btn" id="open" type="button">OPEN THE BOX</button><button class="btn" id="close" type="button" hidden>CLOSE IT AGAIN</button></div>
+    <div class="tally"><span id="tRun">Running: 0</span><span id="tNap">Not running: 0</span><span id="tPb">Best: -</span></div>
+  </section>
+</div>
+<script>
+const CIARA=["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.","KHSSSSSSSSHK","KHKKKSSKKKHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTBSK","KSKTTTTTBKSK","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const CIARA_PAL={K:'#151515',W:'#ffffff',H:'#d9b47a',h:'#b8924f',S:'#f3cfb4',T:'#efe6d6',B:'#8a5530',P:'#5f87b8',O:'#d8c8a8'};
+function drawCiara(cv){const c=cv.getContext('2d');CIARA.forEach((r,j)=>{for(let i=0;i<12;i++){const col=CIARA_PAL[r[i]];if(col){c.fillStyle=col;c.fillRect(i,j,1,1)}}})}
+let __ac=null;function tone(f,d,v,delay,type){try{__ac=__ac||new (window.AudioContext||window.webkitAudioContext)();const t=__ac.currentTime+(delay||0),o=__ac.createOscillator(),g=__ac.createGain();o.type=type||'triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.04,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(__ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+
+(function(){
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const W=320,H=170,GY=132;
+const RUN_NOTES=['Negative split. Very stable.','Exothermic finish, sprinted the last 200m.','Kept a constant rate of reaction the whole way.','Paced it like a titration. Drop by drop.','Bonded with a dog at 2k, still finished strong.','High energy state the entire way round.'];
+const NAP_NOTES=['Lost an electron at 3k and went home to look for it.','Reached equilibrium on the sofa.','Feeling very noble gas today. Not reacting to anything.','Activation energy too high before breakfast.','Sublimated straight from bed to brunch.','Found a sunbeam. Experiment abandoned.','Observed a bird. Wave function collapsed into a nap.'];
+let state='closed',anim=0,result=null,catX=0,tally={run:0,nap:0,best:null},raf=null,last=0;
+try{const s=JSON.parse(localStorage.getItem('schro')||'null');if(s)tally=s}catch(e){}
+function px(x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),w,h)}
+function scene(){
+  px(0,0,W,H,'#cfe8f5');
+  px(20,24,40,8,'#eef8fd');px(28,18,20,6,'#eef8fd');px(220,34,50,8,'#eef8fd');
+  for(let i=0;i<5;i++){px(i*70-10,88,60,30,'#4f8f45');px(i*70+4,74,32,16,'#4f8f45')}
+  px(0,112,W,H-112,'#6fb45e');
+  // path
+  px(0,GY-6,W,22,'#c9b48a');
+  // start line and banner
+  px(40,GY-6,4,22,'#fff');
+  px(30,52,2,80,'#555');px(108,52,2,80,'#555');px(30,52,80,14,'#5b2a86');
+  c.fillStyle='#fff';c.font='7px "Press Start 2P",monospace';c.fillText('START',50,62);
+  // marshal flag
+  px(270,92,2,40,'#555');px(272,92,14,9,'#f2c230');
+}
+function box(open){
+  const x=56,y=GY-34;
+  px(x,y,36,34,'#151515');px(x+2,y+2,32,30,'#b8854a');px(x+2,y+14,32,2,'#9a6a36');
+  c.fillStyle='#5a3a1e';c.font='5px "Press Start 2P",monospace';c.fillText('?',x+16,y+26);
+  if(!open){px(x-2,y-4,40,6,'#151515');px(x,y-3,36,4,'#c99654')}
+  else{px(x-2,y-24,6,22,'#151515');px(x-1,y-23,4,20,'#c99654')} // lid flipped open on its hinge
+}
+function cat(x,y,mode,t){
+  const K='#151515',G='#f0a050',D='#c87a30',P='#e88aa8',Wt='#fff';
+  if(mode==='nap'){ // curled up
+    px(x,y-10,22,10,K);px(x+1,y-9,20,8,G);px(x+5,y-9,2,8,D);px(x+11,y-9,2,8,D);px(x+15,y-14,8,7,K);px(x+16,y-13,6,5,G);px(x+16,y-16,2,3,K);px(x+20,y-16,2,3,K);px(x+17,y-11,2,1,K);px(x+20,y-11,2,1,K);
+    c.fillStyle='#5a5aa0';c.font='6px "Press Start 2P",monospace';const z=Math.floor(t*1.2)%3;for(let i=0;i<=z;i++)c.fillText('z',x+26+i*6,y-18-i*6);return}
+  const f=Math.floor(t*10)%2,b=y-12;
+  px(x-8,b-8,2,2,K);px(x-6,b-6,2,2,G);
+  px(x-3,b-6,22,9,K);px(x-2,b-5,20,7,G);px(x+3,b-5,2,7,D);px(x+9,b-5,2,7,D);
+  px(x+16,b-12,11,10,K);px(x+17,b-11,9,8,G);px(x+17,b-14,3,3,K);px(x+23,b-14,3,3,K);px(x+18,b-13,1,2,P);px(x+24,b-13,1,2,P);
+  px(x+19,b-9,2,2,K);px(x+23,b-9,2,2,K);px(x+19,b-9,1,1,Wt);px(x+23,b-9,1,1,Wt);
+  // race number
+  px(x+5,b-4,8,5,Wt);c.fillStyle=K;c.font='4px "Press Start 2P",monospace';c.fillText('5K',x+6,b);
+  if(f===0){px(x-1,b+3,3,7,K);px(x+4,b+3,3,5,K);px(x+12,b+3,3,7,K);px(x+16,b+3,3,5,K)}
+  else{px(x+1,b+3,3,5,K);px(x+6,b+3,3,7,K);px(x+10,b+3,3,5,K);px(x+15,b+3,3,7,K)}
+}
+function draw(t){
+  scene();
+  if(state==='closed'){box(false);c.fillStyle='#211d2b';c.font='6px "Press Start 2P",monospace';c.fillText('|alive> + |asleep>',118,40)}
+  else{box(true);
+    if(result.run){cat(catX,GY,'run',t)}
+    else cat(64,GY-34,'nap',t)}
+}
+function frame(n){const dt=Math.min(.05,(n-last)/1000);last=n;anim+=dt;
+  if(state==='open'&&result.run&&catX<W+40)catX+=dt*90;
+  draw(anim);raf=requestAnimationFrame(frame)}
+function fmt(s){return Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0')}
+function updTally(){document.getElementById('tRun').textContent='Running: '+tally.run;document.getElementById('tNap').textContent='Not running: '+tally.nap;document.getElementById('tPb').textContent='Best: '+(tally.best?fmt(tally.best):'-');try{localStorage.setItem('schro',JSON.stringify(tally))}catch(e){}}
+document.getElementById('open').onclick=()=>{
+  const run=Math.random()<.5;result={run};state='open';catX=66;
+  const T=document.getElementById('rT'),P=document.getElementById('rP');
+  if(run){const secs=Math.round(19*60+Math.random()*13*60);tally.run++;const pb=!tally.best||secs<tally.best;if(pb)tally.best=secs;
+    T.textContent=`Alive and running! 5k in ${fmt(secs)}`+(pb?' - a PB!':'');P.textContent=RUN_NOTES[Math.random()*RUN_NOTES.length|0];tone(660,.12,.04);tone(880,.12,.04,.12);tone(1100,.2,.04,.24)}
+  else{tally.nap++;T.textContent='Not running today.';P.textContent=NAP_NOTES[Math.random()*NAP_NOTES.length|0];tone(330,.3,.03,0,'sine');tone(262,.4,.03,.25,'sine')}
+  updTally();document.getElementById('open').hidden=true;document.getElementById('close').hidden=false;
+};
+document.getElementById('close').onclick=()=>{state='closed';document.getElementById('rT').textContent='The cat is both running and not running.';document.getElementById('rP').textContent='Until somebody opens the box.';document.getElementById('open').hidden=false;document.getElementById('close').hidden=true};
+updTally();last=performance.now();
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){draw(0);setInterval(()=>{if(state==='open'&&result.run)catX=W+40;draw(0)},500)}else raf=requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
