@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ciara's Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#22213a;--panel:#f6f1e7;--ink:#211d2b;--muted:#6f6878;--accent:#d9b47a;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.wrap>*{min-width:0}
+.back{color:#cfc8e6;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+h1{margin:0;font-weight:400;font-size:clamp(13px,3.4vw,22px);line-height:1.5}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+.btn{font-family:var(--pixel);font-size:10px;background:var(--accent);color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:11px 14px;cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+canvas,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.game{display:block;width:100%;max-width:640px;margin-left:auto;margin-right:auto;height:auto;image-rendering:pixelated;border:3px solid #000;touch-action:manipulation}
+
+.sign{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.sign canvas{width:48px;height:68px;image-rendering:pixelated}
+.games{display:grid;gap:14px}
+.card{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;text-decoration:none;color:var(--ink);background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:14px}
+.card:hover{transform:translateY(-2px)}
+.card:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.card canvas{width:72px;height:72px;image-rendering:pixelated;background:#e6dcc8;border:3px solid #000}
+.card h2{margin:0;font-weight:400;font-size:11px;line-height:1.6}
+.card p{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+.card .go{display:inline-block;margin-top:8px;font-size:8px;color:#7a4f9e}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&lt; Back to Wimbledon Common</a>
+  <header class="box sign">
+    <canvas id="me" width="12" height="17" aria-label="Ciara in sunglasses and a cream jacket"></canvas>
+    <div>
+      <h1>Ciara's Lab</h1>
+      <p class="sub">Cats, chemistry and running. Three experiments, pick one.</p>
+    </div>
+  </header>
+
+  <nav class="games" aria-label="Games">
+    <a class="card" href="run/">
+      <canvas data-icon="run" width="24" height="24" aria-hidden="true"></canvas>
+      <div><h2>Cat-alyst Run</h2><p>Race your cat to the finish, collecting elements. Make water for a speed boost, but watch out for salt.</p><span class="go">PLAY &gt;</span></div>
+    </a>
+    <a class="card" href="table/">
+      <canvas data-icon="table" width="24" height="24" aria-hidden="true"></canvas>
+      <div><h2>The Periodic Table of Cats</h2><p>Meet all 36 cats from Hiss-drogen to Kryp-tom. Every one comes with a real fact.</p><span class="go">EXPLORE &gt;</span></div>
+    </a>
+    <a class="card" href="box/">
+      <canvas data-icon="box" width="24" height="24" aria-hidden="true"></canvas>
+      <div><h2>Schr&ouml;dinger's Parkrun</h2><p>The cat is in the box at the start line. Is it running today? Open it and find out.</p><span class="go">OPEN THE BOX &gt;</span></div>
+    </a>
+  </nav>
+</div>
+<script>
+const CIARA=["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.","KHSSSSSSSSHK","KHKKKSSKKKHK","KHSSSSSSSSHK","KHSSSWWSSSHK","KHHKSSSSKHHK","KHHTTTTTTHHK","KHTTTTTTTTHK","KSTTTTTTTBSK","KSKTTTTTBKSK","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KOOKKOOK.."];
+const CIARA_PAL={K:'#151515',W:'#ffffff',H:'#d9b47a',h:'#b8924f',S:'#f3cfb4',T:'#efe6d6',B:'#8a5530',P:'#5f87b8',O:'#d8c8a8'};
+function drawCiara(cv){const c=cv.getContext('2d');CIARA.forEach((r,j)=>{for(let i=0;i<12;i++){const col=CIARA_PAL[r[i]];if(col){c.fillStyle=col;c.fillRect(i,j,1,1)}}})}
+let __ac=null;function tone(f,d,v,delay,type){try{__ac=__ac||new (window.AudioContext||window.webkitAudioContext)();const t=__ac.currentTime+(delay||0),o=__ac.createOscillator(),g=__ac.createGain();o.type=type||'triangle';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.04,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(__ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+
+drawCiara(document.getElementById('me'));
+const ICONS={
+ run:["........................","........................","................K.K.....","...............KGKGK....","..............KGGGGGK...","K.............KGWGWGK...",".K............KGGPGGK...","..K..KKKKKKKKKKGGGGK....","...KKGGGGGGGGGGGGGK.....","....KGGGGGGGGGGGGK......","....KGGGGGGGGGGGGK......",".....KKKKKKKKKKKK.......","....KGK..KGK..KGK.......","...KGK....KGK..KGK......","..KK.......KK...KK......","........................","DDDDDDDDDDDDDDDDDDDDDDDD","dddddddddddddddddddddddd","DDDDDDDDDDDDDDDDDDDDDDDD","........................","........................","........................","........................","........................"],
+ table:["........................","..KKKKKKK...KKKKKKK.....","..KHHHHHK...KOOOOOK.....","..KHKHKHK...KOOKOOK.....","..KHKKKHK...KOKOKOK.....","..KHKHKHK...KOOKOOK.....","..KHHHHHK...KOOOOOK.....","..KKKKKKK...KKKKKKK.....","........................","..KKKKKKK...KKKKKKK.....","..KCCCCCK...KNNNNNK.....","..KCKKKCK...KNKNKNK.....","..KCKCCCK...KNKKKNK.....","..KCKKKCK...KNKNKNK.....","..KCCCCCK...KNNNNNK.....","..KKKKKKK...KKKKKKK.....","........................","........................","........................","........................","........................","........................","........................","........................"],
+ box:["........................","........................","........................","........................","....BBBBBBBBBBBBBBBB....","...BbbbbbbbbbbbbbbbbB...","...BBBBBBBBBBBBBBBBBB...","...BbbbbbbbbbbbbbbbbB...","...Bbbbbbb???bbbbbbbB...","...Bbbbbbb?b?bbbbbbbB...","...Bbbbbbbbb?bbbbbbbB...","...Bbbbbbbbb?bbbbbbbB...","...Bbbbbbbbbbbbbbbbb B..","...Bbbbbbbbb?bbbbbbbB...","...BbbbbbbbbbbbbbbbbB...","...BBBBBBBBBBBBBBBBBB...","........................","WKWKWKWKWKWKWKWKWKWKWKWK","KWKWKWKWKWKWKWKWKWKWKWKW","........................","........................","........................","........................","........................"]};
+const IP={K:'#151515',G:'#8a8a96',W:'#ffffff',P:'#e88aa8',D:'#c0563a',d:'#e9e1d0',H:'#e8f0ff',O:'#e05a5a',C:'#5f5f68',N:'#b08ae0',B:'#5a3a1e',b:'#b8854a','?':'#fff3a0'};
+document.querySelectorAll('[data-icon]').forEach(cv=>{const c=cv.getContext('2d');ICONS[cv.dataset.icon].forEach((r,j)=>{for(let i=0;i<r.length;i++){const col=IP[r[i]];if(col){c.fillStyle=col;c.fillRect(i,j,1,1)}}})});
+</script>
+</body>
+</html>
