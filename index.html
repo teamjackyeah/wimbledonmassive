@@ -132,6 +132,8 @@ const BODY={
  "...KKKKKK...","..KHHHHhHK..",".KHHhHHHHHK.",".KHSSSSSSHK.",
  ".KKKKSSKKKK.",".KLEKSSKELK.",".KBSSSSSSBK.",".KBBSWWSBBK.",
  "..KKBBBBKK..",".KTTTTTTTTK.","KTTTTTTTTTTK","KSTTTTTTTTSK","KSKTTTTTTKSK"],
+ clara:[
+ "............","............","..KKKKKKKK..",".KHHhHHhHHK.","KHhHHHHHHhHK","KHHSSOOSSHHK","KHVKVSSVKVHK",".KSSSSSSSSK.","..KSSWWSSK..","...KKSSKK...","..KTTTTTTK..",".KSTTTTTTSK.","..KTTTTTTK.."],
  gen:[
  "...KKKKKK...","..KHHHHHHK..",".KHHHHhHHHK.",".KSSSSSSSSK.",
  ".KSSSSSSSSK.",".KSKSSSSKSK.",".KSSSSSSSSK.",".KSSSWWSSSK.",
@@ -149,6 +151,10 @@ const ALEISHA_LEGS=[
  ["..KPPPPPPK..","..KSSKKSSK..","..KAAKKAAK..","..KWWKKWWK.."],
  ["..KPPPPPPK..",".KSSK.KSSK..",".KAAK..KAAK.",".KWWK..KWWK."]
 ];
+const CLARA_LEGS=[
+ ["..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KQQKKQQK.."],
+ ["..KPPPPPPK..",".KPPK.KPPK..",".KPPK..KPPK.",".KQQK..KQQK."]
+];
 const base={K:'#151515',W:'#ffffff',O:'#3a2a1a'};
 const CHARS=[
  {name:'Jack', rows:BODY.jack, pal:{...base,H:'#9a9a9a',h:'#6b6b6b',S:'#f2c4a0',T:'#bcd4ee',L:'#1f8a42',P:'#2b3550'}},
@@ -162,12 +168,13 @@ const CHARS=[
  {name:'Will',rows:BODY.will,legs:WILL_LEGS,pal:{...base,C:'#d98a7a',c:'#b86a5c',G:'#7aa8d8',S:'#f2c4a0',T:'#4a4a4a',P:'#6f86a8',Y:'#d9a12a',O:'#6a5a4a'}},
  {name:'Ciara',rows:BODY.ciara,pal:{...base,H:'#d9b47a',h:'#b8924f',S:'#f3cfb4',T:'#efe6d6',B:'#8a5530',P:'#5f87b8',O:'#d8c8a8'}},
  {name:'Aleisha',rows:BODY.aleisha,legs:ALEISHA_LEGS,pal:{...base,C:'#6e5a52',c:'#efe2cf',G:'#8a4a1e',H:'#9a6a3e',S:'#f2c6a6',Y:'#e8c040',T:'#efe6d6',P:'#a8c4dc',A:'#b0b0b8'}},
- {name:'Fred',rows:BODY.fred,pal:{...base,H:'#8a6040',h:'#6a4628',S:'#f0c4a4',L:'#dfe8ee',E:'#2a2a34',B:'#c8946a',T:'#d8695e',P:'#d8c4a0',O:'#5a4a3a'}}
+ {name:'Fred',rows:BODY.fred,pal:{...base,H:'#8a6040',h:'#6a4628',S:'#f0c4a4',L:'#dfe8ee',E:'#2a2a34',B:'#c8946a',T:'#d8695e',P:'#d8c4a0',O:'#5a4a3a'}},
+ {name:'Clara',rows:BODY.clara,legs:CLARA_LEGS,pal:{...base,H:'#8a5a34',h:'#a87040',S:'#f2c9a8',O:'#f08a2a',V:'#8a4ab8',T:'#bcd8dc',P:'#8fa8c8',Q:'#e88aa8'}}
 ];
 
 /* ---------- seasons and birthdays ---------- */
 // Birthdays as 'MM-DD', e.g. Jack:'03-14'
-const BIRTHDAYS={Jack:null,Ellie:null,'Lauren L':null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06','Lauren B':'06-20',Will:'01-04',Ciara:'12-19',Aleisha:'04-15',Fred:null};
+const BIRTHDAYS={Jack:null,Ellie:null,'Lauren L':null,Matt:null,Ben:null,Poppy:'03-13',Max:'08-06','Lauren B':'06-20',Will:'01-04',Ciara:'12-19',Aleisha:'04-15',Fred:null,Clara:'07-04'};
 const SKY_DAY=['#5aa3e6','#68afeb','#78bcf0','#8bc9f3','#a2d6f5','#bce3f6'];
 const GREEN_FAR=['#4a7f55','#5f9466','#76a97a'],GREEN_NEAR=['#24552d','#2f6b3a','#3f8248'];
 const AUT_FAR=[['#a5642c','#c97d33','#e0a24a'],['#8f4a24','#b25a2b','#d07a3a'],GREEN_FAR];
