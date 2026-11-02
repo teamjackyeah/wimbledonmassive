@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rainbow Duck Race</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#2a2350;--panel:#fff8ee;--ink:#22203a;--muted:#6e6880;--pixel:"Press Start 2P","Courier New",monospace;color-scheme:light}
+*{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--pixel);
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:12px 28px}
+.wrap{max-width:560px;margin:0 auto;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.back{color:#d6cff0;font-size:9px;text-decoration:none}
+.back:hover,.back:focus-visible{color:#fff}
+.box{background:var(--panel);border:4px solid #000;box-shadow:6px 6px 0 #000;padding:12px}
+.sign{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.sign canvas{width:48px;height:68px;image-rendering:pixelated}
+h1{margin:0;font-weight:400;font-size:clamp(13px,4vw,20px);line-height:1.5;
+  background:linear-gradient(90deg,#e04848,#f08a2a,#e8b820,#3a9a48,#3a7ad8,#8a4ab8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin:6px 0 0;font-size:8px;line-height:1.9;color:var(--muted)}
+canvas.pool{display:block;width:100%;height:auto;image-rendering:pixelated;border:4px solid #000;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.say{font-size:11px;line-height:1.7;text-align:center;margin:10px 0 0;min-height:1.7em}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.btn{font-family:var(--pixel);font-size:11px;background:#fff;color:var(--ink);border:3px solid #000;box-shadow:3px 3px 0 #000;padding:12px 14px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.btn:focus-visible{outline:3px solid #3a7ad8;outline-offset:2px}
+.btn.go{background:#7cd38a}.btn.stop{background:#f08a8a}.btn.drop{background:#ffe08a}
+.kids{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.kid{font-family:var(--pixel);font-size:9px;line-height:1.5;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:16px 4px;cursor:pointer;color:#fff;text-shadow:1px 1px 0 #000;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.kid:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.kid:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.how{font-size:8px;line-height:1.9;color:var(--muted);margin:12px 0 0;text-align:center}
+.score{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:8px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&lt; Back to Wimbledon Common</a>
+  <header class="box sign">
+    <canvas id="me" width="12" height="17" aria-label="Clara"></canvas>
+    <div>
+      <h1>Clara's Rainbow Duck Race</h1>
+      <p class="sub">Drop the ducks, then swim to get them. Only kids allowed in the pool!</p>
+    </div>
+  </header>
+  <section class="box">
+    <canvas class="pool" id="cv" width="240" height="300" aria-label="Swimming pool with four lanes"></canvas>
+    <p class="say" id="say" aria-live="polite">Mummy says: drop the ducks!</p>
+    <div class="row">
+      <button class="btn drop" id="drop" type="button">DROP THE DUCKS</button>
+      <button class="btn go" id="go" type="button" hidden>GO!</button>
+      <button class="btn stop" id="stop" type="button" hidden>STOP!</button>
+      <button class="btn drop" id="again" type="button" hidden>AGAIN!</button>
+    </div>
+    <div class="kids" id="kids"></div>
+    <p class="how">Tap your name to swim faster. Anyone not tapping swims by themselves.</p>
+    <div class="score" id="score"></div>
+  </section>
+</div>
+<script>
+(function(){
+// Clara sprite
+const ME=["............","............","..KKKKKKKK..",".KHHhHHhHHK.","KHhHHHHHHhHK","KHHSSOOSSHHK","KHVKVSSVKVHK",".KSSSSSSSSK.","..KSSWWSSK..","...KKSSKK...","..KTTTTTTK..",".KSTTTTTTSK.","..KTTTTTTK..","..KPPPPPPK..","..KPPKKPPK..","..KPPKKPPK..","..KQQKKQQK.."];
+const MP={K:'#151515',W:'#ffffff',H:'#8a5a34',h:'#a87040',S:'#f2c9a8',O:'#f08a2a',V:'#8a4ab8',T:'#bcd8dc',P:'#8fa8c8',Q:'#e88aa8'};
+const mc=document.getElementById('me').getContext('2d');ME.forEach((r,j)=>{for(let i=0;i<12;i++){const c=MP[r[i]];if(c){mc.fillStyle=c;mc.fillRect(i,j,1,1)}}});
+
+const POPPY=["...KKKKKK...","..KHHHHHHK..",".KHHhHHHHHK.",".KHhSSSSHHK.",".KHSSSSSSHK.",".KHSKSSKSHK.",".KHSSSSSSHK.",".KHSSRRSSHK.","KHHKSSSSKHHK","KHHTLTTMTHHK","KHTTMTTLTTHK","KSTLTTMTTLSK","KSKTTLTTMKSK"];
+const PP={K:'#151515',H:'#8a5a3a',h:'#6a4228',S:'#f3c6a8',R:'#8a2a30',T:'#1d3f8f',L:'#5b98e6',M:'#3f9a4a'};
+const KIDS=[{name:'Rowan',cap:'#3a7ad8'},{name:'Clara',cap:'#e04848'},{name:'Xavier',cap:'#3a9a48'},{name:'Felix',cap:'#f08a2a'}];
+const RAINBOW=['#e04848','#f08a2a','#f6d040','#3a9a48','#3a7ad8','#8a4ab8'];
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const W=240,H=300,X0=40,LW=40,TOP=40,START=270,DUCKY=58;
+let state='empty',kids,ducks,t=0,winner=null,wins={};
+try{wins=JSON.parse(localStorage.getItem('duckrace')||'{}')}catch(e){}
+function reset(){kids=KIDS.map((k,i)=>({...k,y:START,v:0,base:9+Math.random()*7,stroke:0,got:false}));ducks=KIDS.map((k,i)=>({y:-20-i*14,vy:0,landed:false,bob:Math.random()*6}));winner=null}
+reset();
+const say=document.getElementById('say');
+function px(x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),w,h)}
+function drawPool(){
+  px(0,0,W,H,'#e8e0d0');
+  for(let y=0;y<H;y+=10)for(let x=0;x<W;x+=10)if((x+y)/10%2)px(x,y,10,10,'#ddd3c0');
+  px(X0-4,TOP-6,LW*4+8,H-TOP+2,'#f4f4f4');
+  px(X0,TOP-2,LW*4,H-TOP-6,'#4aa8e0');
+  // gentle ripples
+  c.fillStyle='#6cc0ee';for(let i=0;i<14;i++){const y=TOP+8+((i*23+t*6)%(H-TOP-20)),x=X0+((i*37)%(LW*4-16));c.fillRect(Math.round(x),Math.round(y),10,1)}
+  // lane ropes
+  for(let l=1;l<4;l++){const x=X0+l*LW;for(let y=TOP;y<H-8;y+=6){px(x-1,y,2,3,(y/6)%2?'#e04848':'#ffffff')}}
+  // finish wall + start wall
+  px(X0,TOP-2,LW*4,3,'#2a6a9a');px(X0,START+8,LW*4,2,'#2a6a9a');
+}
+function drawDuck(x,y,big){
+  const s=big?1:1;
+  px(x-6,y-3,12,7,'#151515');
+  const stripes=RAINBOW;for(let i=0;i<6;i++)px(x-5+i*2,y-2,2,5,stripes[i]);
+  px(x+2,y-8,7,7,'#151515');px(x+3,y-7,5,5,'#8a4ab8');px(x+3,y-7,5,1,'#3a7ad8');px(x+5,y-6,1,1,'#151515');
+  px(x+8,y-5,4,2,'#f6c945');px(x+8,y-5,4,1,'#ffd860');
+  px(x-6,y-4,2,2,'#e04848');
+}
+function drawKid(k,i){
+  const x=X0+i*LW+LW/2,y=k.y,arm=Math.floor(k.stroke)%2;
+  // splash kicks
+  if(state==='race'&&!k.got){c.fillStyle='#ffffff';c.fillRect(x-4,y+12+arm,2,2);c.fillRect(x+2,y+13-arm,2,2)}
+  // body
+  px(x-4,y+2,8,10,'#f0c4a4');px(x-4,y+6,8,4,k.cap);
+  // arms
+  if(arm){px(x-9,y-6,3,9,'#f0c4a4');px(x+6,y+2,3,8,'#f0c4a4')}else{px(x-9,y+2,3,8,'#f0c4a4');px(x+6,y-6,3,9,'#f0c4a4')}
+  // head with cap and goggles
+  px(x-5,y-6,10,9,'#151515');px(x-4,y-5,8,7,k.cap);px(x-4,y-1,8,2,'#151515');px(x-3,y-1,2,1,'#9fe0ff');px(x+1,y-1,2,1,'#9fe0ff');
+  c.fillStyle='#151515';c.font='5px "Press Start 2P",monospace';const w=c.measureText(k.name).width;
+  c.fillStyle='rgba(255,255,255,.85)';c.fillRect(x-w/2-2,START+14,w+4,9);c.fillStyle='#151515';c.fillText(k.name,x-w/2,START+21);
+  if(k.got)drawDuck(x+1,y-12,true);
+}
+function drawPoppy(){
+  const x=4,y=TOP+70;POPPY.forEach((r,j)=>{for(let i=0;i<12;i++){const col=PP[r[i]];if(col)px(x+i*2,y+j*2,2,2,col)}});
+  px(x+6,y+26,12,4,'#1d3f8f');px(x+6,y+30,4,6,'#1d3f8f');px(x+14,y+30,4,6,'#1d3f8f');
+  // whistle
+  px(x+22,y+16,4,3,'#c0c0c8');
+  c.fillStyle='#151515';c.font='5px "Press Start 2P",monospace';c.fillText('MUMMY',x,y+46);
+}
+function draw(){
+  drawPool();
+  ducks.forEach((d,i)=>{if(kids[i].got)return;const x=X0+i*LW+LW/2-2;const bob=d.landed?Math.round(Math.sin(t*2+d.bob)):0;
+    if(d.y>-20)drawDuck(x,d.y+bob)});
+  kids.forEach(drawKid);
+  drawPoppy();
+  // banner
+  px(X0+30,4,100,20,'#ffffff');px(X0+30,4,100,2,'#e04848');px(X0+30,22,100,2,'#3a7ad8');
+  c.fillStyle='#151515';c.font='6px "Press Start 2P",monospace';c.fillText('DUCK RACE',X0+53,17);
+}
+function update(dt){
+  t+=dt;
+  ducks.forEach(d=>{if(state!=='empty'&&!d.landed){d.vy+=300*dt;d.y+=d.vy*dt;if(d.y>=DUCKY){d.y=DUCKY;d.landed=true;tone(380+Math.random()*80,.12,.03,0,'sine')}}});
+  if(state==='race'){
+    kids.forEach((k,i)=>{if(k.got)return;const wob=Math.sin(t*1.7+i)*2;k.y-=(k.base+wob+k.v)*dt;k.v=Math.max(0,k.v-dt*30);k.stroke+=dt*(2+k.base/6+k.v/6);
+      if(k.y<=DUCKY+10){k.y=DUCKY+10;k.got=true;if(!winner){winner=k;finish()}}});
+  }
+  if(state==='done'){kids.forEach(k=>{if(!k.got){k.y-=(k.base*.6)*dt;k.stroke+=dt*2;if(k.y<=DUCKY+10){k.y=DUCKY+10;k.got=true}}})}
+}
+function finish(){state='done';wins[winner.name]=(wins[winner.name]||0)+1;try{localStorage.setItem('duckrace',JSON.stringify(wins))}catch(e){}
+  say.textContent=`Mummy says: ${winner.name} got the duck! ${winner.name} wins!`;tone(660,.15,.04);tone(880,.15,.04,.15);tone(1047,.3,.04,.3);
+  show('again');score()}
+function show(id){['drop','go','stop','again'].forEach(b=>document.getElementById(b).hidden=b!==id&&!(id==='go'&&false))}
+function score(){document.getElementById('score').innerHTML=KIDS.map(k=>`<span>${k.name}: ${wins[k.name]||0}</span>`).join('')}
+let ac=null;function tone(f,d,v,delay,type){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const tt=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();o.type=type||'triangle';o.frequency.setValueAtTime(f,tt);g.gain.setValueAtTime(.0001,tt);g.gain.exponentialRampToValueAtTime(v||.04,tt+.01);g.gain.exponentialRampToValueAtTime(.0001,tt+d);o.connect(g);g.connect(ac.destination);o.start(tt);o.stop(tt+d+.05)}catch(e){}}
+let timers=[];
+document.getElementById('drop').onclick=()=>{state='dropped';say.textContent='Splash! Rainbow ducks are in the pool.';
+  timers.push(setTimeout(()=>{say.textContent='Mummy says: when I say GO...';show('go')},1300));show('none')};
+document.getElementById('go').onclick=()=>{show('none');say.textContent='Ready...';tone(523,.15,.04);
+  timers.push(setTimeout(()=>{say.textContent='Steady...';tone(523,.15,.04)},800));
+  timers.push(setTimeout(()=>{say.textContent='GO!';tone(784,.35,.05);state='race';show('stop')},1600))};
+document.getElementById('stop').onclick=()=>{if(state!=='race')return;state='stopped';say.textContent='Mummy says STOP! Everybody wait...';show('go')};
+document.getElementById('again').onclick=()=>{timers.forEach(clearTimeout);timers=[];reset();state='empty';say.textContent='Mummy says: drop the ducks!';show('drop')};
+const kidsEl=document.getElementById('kids');
+KIDS.forEach((k,i)=>{const b=document.createElement('button');b.type='button';b.className='kid';b.style.background=k.cap;b.textContent=k.name.toUpperCase();
+  b.addEventListener('pointerdown',e=>{e.preventDefault();if(state==='race'&&!kids[i].got){kids[i].v=Math.min(60,kids[i].v+14);tone(300+i*60,.04,.02,0,'sine')}});
+  kidsEl.appendChild(b)});
+score();
+let last=performance.now();
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
